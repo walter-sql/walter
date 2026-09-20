@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_call:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The demo packages import the engine through its dist/ exports map.
+      - run: pnpm build
+      - run: pnpm typecheck
+      # Custom command (wal_level=logical) rules out GitHub's `services:` block.
+      - name: Start Postgres
+        run: |
+          docker run -d --name pg -p 55432:5432 \
+            -e POSTGRES_USER=walter -e POSTGRES_PASSWORD=walter -e POSTGRES_DB=walter \
+            postgres:18 -c wal_level=logical
+          until docker exec pg pg_isready -U walter -d walter; do sleep 1; done
+      - run: pnpm test
+        env:
+          WALTER_TEST_PG: postgres://walter:walter@localhost:55432/walter
+      # The workspace never exercises the packed artifacts: unpack them into a
+      # throwaway workspace that links them by version, install prod-only as a
+      # consumer would, import every package, and expect the bin to refuse a
+      # missing env loudly.
+      - name: Pack smoke
+        run: |
+          mkdir -p /tmp/smoke/app
+          for p in view client tanstack-query engine; do
+            pnpm --filter @walter-sql/$p pack --out /tmp/smoke/$p.tgz
+            mkdir -p /tmp/smoke/pkgs/$p
+            tar -xzf /tmp/smoke/$p.tgz -C /tmp/smoke/pkgs/$p --strip-components=1
+            test -f /tmp/smoke/pkgs/$p/LICENSE
+          done
+          cd /tmp/smoke
+          printf 'packages:\n  - "pkgs/*"\n  - "app"\nlinkWorkspacePackages: true\n' > pnpm-workspace.yaml
+          printf '{"name":"smoke","private":true}' > package.json
+          printf '%s' '{"name":"app","private":true,"type":"module","dependencies":{
+            "@walter-sql/engine":"workspace:*","@walter-sql/view":"workspace:*",
+            "@walter-sql/client":"workspace:*","@walter-sql/tanstack-query":"workspace:*"}}' > app/package.json
+          pnpm install --prod
+          cd app
+          node --input-type=module -e "
+            await import('@walter-sql/engine');
+            await import('@walter-sql/view');
+            await import('@walter-sql/client');
+            await import('@walter-sql/tanstack-query');
+          "
+          pnpm exec walter 2>&1 | grep "WALTER_PG"
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The differential imports the view package through its dist.
+      - run: pnpm build
+      # End to end on the test's own compose: it builds the engine image and
+      # boots it non-root against a seeded Postgres; the differential drives it
+      # through replication, the wire protocol, and the view patcher.
+      - run: docker compose -f packages/engine/e2e/docker-compose.yml up --build --wait
+      - run: pnpm engine e2e
+      - if: failure()
+        run: docker compose -f packages/engine/e2e/docker-compose.yml logs --no-color

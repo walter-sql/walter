@@ -1,0 +1,275 @@
+<figure class="scaling-diagram" aria-labelledby="scaling-caption">
+  <figcaption id="scaling-caption">
+    <span>Cluster topology</span>
+    <span>Two owners with a relay layer</span>
+  </figcaption>
+  <div class="database-node">
+    <svg
+      width="34"
+      height="38"
+      viewBox="0 0 44 44"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.25"
+      aria-hidden="true"
+    >
+      <ellipse cx="22" cy="10" rx="12" ry="5" />
+      <path d="M10 10v23c0 2.8 5.4 5 12 5s12-2.2 12-5V10M10 21c0 2.8 5.4 5 12 5s12-2.2 12-5" />
+    </svg>
+    <div>
+      <strong>Postgres</strong>
+      <span>The same publication for both owners</span>
+    </div>
+  </div>
+  <div class="connector split" aria-hidden="true">
+    <svg viewBox="0 0 600 42" preserveAspectRatio="none">
+      <path d="M300 0v16M150 42V16h300v26" />
+      <path class="arrow" d="m146 37 4 5 4-5m292 0 4 5 4-5" />
+    </svg>
+  </div>
+  <p class="connection-label">One replication stream per owner</p>
+  <div class="node-pair">
+    {["A", "B"].map(name => (
+      <div class="node owner">
+        <div class="node-title">
+          <svg
+            width="23"
+            height="23"
+            viewBox="0 0 32 32"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.25"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="m16 3 12 7-12 7L4 10l12-7ZM4 16l12 7 12-7M4 22l12 7 12-7" />
+          </svg>
+          <strong>Owner {name}</strong>
+        </div>
+        <span>Maintains assigned queries</span>
+        <span class="node-tag">Connected to Postgres</span>
+      </div>
+    ))}
+  </div>
+  <div class="connector mesh" aria-hidden="true">
+    <svg viewBox="0 0 600 58" preserveAspectRatio="none">
+      <path d="M150 0v58M450 0v58M150 0v10c0 8 8 8 16 8h268c8 0 16 0 16 8v32M450 0v10c0 8-8 8-16 8H166c-8 0-16 0-16 8v32" />
+      <path class="arrow" d="m146 53 4 5 4-5m292 0 4 5 4-5" />
+    </svg>
+    <span>Snapshots and diffs</span>
+  </div>
+  <div class="node-pair">
+    {["A", "B"].map(name => (
+      <div class="node relay">
+        <div class="node-title">
+          <svg
+            width="23"
+            height="23"
+            viewBox="0 0 32 32"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.25"
+            aria-hidden="true"
+          >
+            <rect x="5" y="5" width="22" height="9" rx="2" />
+            <rect x="5" y="19" width="22" height="9" rx="2" />
+            <path d="M9 9.5h2m-2 14h2m8-14h4m-4 14h4" />
+          </svg>
+          <strong>Relay {name}</strong>
+        </div>
+        <span>Serves results from either owner</span>
+        <span class="node-tag">No database connection</span>
+      </div>
+    ))}
+  </div>
+  <div class="connector merge" aria-hidden="true">
+    <svg viewBox="0 0 600 38" preserveAspectRatio="none">
+      <path d="M150 0v16h300V0M300 16v22" />
+      <path class="arrow" d="m296 33 4 5 4-5" />
+    </svg>
+  </div>
+  <div class="entry-node">
+    <span class="load-balancer">Load balancer</span>
+    <span class="entry-link" aria-hidden="true">
+      ↓
+    </span>
+    <strong>Your application servers</strong>
+    <span>Authenticate users and stream results to your apps</span>
+  </div>
+  <p class="diagram-note">
+    Owners distribute query maintenance. Relays distribute delivery.
+  </p>
+</figure>
+
+<style>
+  .scaling-diagram {
+    margin: 3px 0 30px;
+    padding: 20px 22px 18px;
+    border: 1px solid var(--hairline);
+    border-radius: 7px;
+    background: var(--surface);
+  }
+  figcaption {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 26px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  figcaption > :first-child {
+    font: 9px var(--mono);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .database-node {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 13px;
+  }
+  .database-node > div {
+    display: flex;
+    flex-direction: column;
+  }
+  strong {
+    font-size: 14px;
+    font-weight: 550;
+    line-height: 1.5;
+  }
+  .database-node span,
+  .node > span,
+  .entry-node > span:last-child {
+    display: block;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .connector {
+    position: relative;
+  }
+  .connector svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+  .connector path {
+    fill: none;
+    stroke: var(--hairline-strong);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  .connector .arrow {
+    stroke: var(--muted);
+  }
+  .split {
+    height: 32px;
+    margin-top: 12px;
+  }
+  .connection-label {
+    margin: 0 0 12px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 10px;
+  }
+  .node-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .node {
+    text-align: center;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 5px;
+    padding: 14px 8px 12px;
+    background: var(--bg);
+  }
+  .node-title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    margin-bottom: 8px;
+  }
+  .owner .node-title svg {
+    color: var(--primary);
+  }
+  .node > .node-tag {
+    margin-top: 10px;
+    padding-top: 9px;
+    border-top: 1px solid var(--hairline);
+    font-size: 10px;
+  }
+  .mesh {
+    height: 58px;
+  }
+  .mesh > span {
+    position: absolute;
+    top: 29px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    padding: 0 9px;
+    color: var(--muted);
+    background: var(--surface);
+    font-size: 10px;
+  }
+  .merge {
+    height: 38px;
+  }
+  .entry-node {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    text-align: center;
+  }
+  .load-balancer {
+    padding: 5px 22px;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 4px;
+    background: var(--bg);
+    font-size: 11px;
+  }
+  .entry-link {
+    padding: 3px 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .diagram-note {
+    margin-top: 22px;
+    padding-top: 13px;
+    border-top: 1px solid var(--hairline);
+    color: var(--muted);
+    font-size: 11px;
+    text-align: center;
+    line-height: 1.5;
+  }
+  @media (max-width: 480px) {
+    .scaling-diagram {
+      padding: 16px 12px;
+    }
+    figcaption {
+      gap: 8px;
+      font-size: 10px;
+    }
+    .node-pair {
+      gap: 14px;
+    }
+    .node {
+      padding-inline: 7px;
+    }
+    .node-title {
+      gap: 6px;
+    }
+    strong {
+      font-size: 13px;
+    }
+    .node > span {
+      font-size: 10px;
+    }
+    .node > .node-tag {
+      font-size: 9px;
+    }
+  }
+</style>

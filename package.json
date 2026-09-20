@@ -1,0 +1,33 @@
+{
+  "name": "walter-workspace",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Live SQL queries for Postgres",
+  "type": "module",
+  "packageManager": "pnpm@11.17.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter './packages/*' build",
+    "typecheck": "pnpm -r --no-bail typecheck",
+    "test": "pnpm -r --filter './packages/*' test",
+    "format": "prettier --write . \"!pnpm-lock.yaml\"",
+    "set-version": "node scripts/set-version.js",
+    "engine": "pnpm --filter @walter-sql/engine",
+    "demo": "pnpm -F demo-server dev & pnpm -F demo-server bot & pnpm -F demo-web dev & wait",
+    "demo:up": "docker compose -f examples/demo/docker-compose.yml up --build",
+    "demo:down": "docker compose -f examples/demo/docker-compose.yml down -v"
+  },
+  "prettier": {
+    "arrowParens": "avoid",
+    "trailingComma": "none",
+    "plugins": [
+      "prettier-plugin-astro"
+    ]
+  },
+  "devDependencies": {
+    "prettier": "^3.9.6",
+    "prettier-plugin-astro": "^1.0.0"
+  }
+}

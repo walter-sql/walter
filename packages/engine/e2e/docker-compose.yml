@@ -1,0 +1,29 @@
+services:
+  postgres:
+    image: postgres:18
+    command: -c wal_level=logical
+    environment:
+      POSTGRES_USER: walter
+      POSTGRES_PASSWORD: walter
+      POSTGRES_DB: walter
+    ports:
+      - "5444:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U walter -d walter"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  walter:
+    build:
+      context: ../../..
+      dockerfile: packages/engine/Dockerfile
+    environment:
+      WALTER_PG: postgres://walter:walter@postgres:5432/walter
+    ports:
+      - "5544:5544"
+    depends_on:
+      postgres:
+        condition: service_healthy

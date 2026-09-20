@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#111412"/>
+  <g fill="none" stroke="#2a312b" stroke-width="1">
+    <path d="M64 104h1072M64 552h1072"/>
+    <path d="M730 445 930 541l200-96M710 425l200 96 200-96M690 405l200 96 200-96" opacity=".5"/>
+  </g>
+  <g transform="translate(65 45) scale(1.1)" fill="none" stroke="#edf0eb" stroke-width="2.4" stroke-linecap="square" stroke-linejoin="round"><path d="M3 7 8.6 25 16 17 23.4 25 29 7M10 7l6 10 6-10"/></g>
+  <text x="111" y="74" fill="#edf0eb" font-family="'Source Sans 3', sans-serif" font-size="32" font-weight="650" letter-spacing="-1.5">walter</text>
+  <g font-family="IBM Plex Mono" font-size="11" letter-spacing="1.2" fill="#a3ada4"><text x="65" y="190">SQL IN. LIVE DATA OUT.</text></g>
+  <g font-family="'Source Sans 3', sans-serif" font-size="67" font-weight="550" letter-spacing="-2"><text x="61" y="288" fill="#edf0eb">Live queries.</text><text x="61" y="366" fill="#a3ada4">For Postgres.</text></g>
+  <g font-family="'Source Sans 3', sans-serif" font-size="20" fill="#a3ada4"><text x="65" y="425">One snapshot. Then only what changed.</text><text x="65" y="457">From the Postgres you already run.</text></g>
+  <g fill="#181c19" stroke="#566259" stroke-width="1">
+    <path d="m707 414 176-84 176 84-176 85z"/><path d="m707 414 176 85 176-85v7l-176 85-176-85z"/>
+    <path d="m707 293 176-84 176 84-176 85z"/><path d="m707 293 176 85 176-85v7l-176 85-176-85z"/>
+    <path d="m707 172 176-84 176 84-176 85z"/><path d="m707 172 176 85 176-85v6l-176 85-176-85z"/>
+  </g>
+  <g fill="none" stroke="#82d6b4" stroke-width="1" stroke-dasharray="2 5" opacity=".65"><path d="M800 456v-78m166 78v-78M800 335v-78m166 78v-78"/></g>
+  <g fill="none" stroke="#82d6b4" stroke-width="2"><path d="M800 405v-10m166-72v-10M800 284v-10m166 161v-10"/></g>
+  <g transform="matrix(1 .48 -1 .48 883 330)" fill="none" stroke="#66766b" stroke-width="1">
+    <path d="M25 30h125v120H25zM25 54h125M25 78h125M25 102h125M25 126h125M53 30v120M108 30v120"/>
+    <path d="M33 66h11m20 0h31m22 0h23M33 90h11m20 0h31m22 0h23M33 114h11m20 0h31m22 0h23M33 138h11m20 0h31m22 0h23" stroke-width="2"/>
+    <path d="M33 90h11m20 0h31m22 0h23" stroke="#82d6b4"/>
+  </g>
+  <g transform="matrix(1 .48 -1 .48 883 209)">
+    <g fill="none" stroke="#82d6b4" stroke-width="1"><path d="M25 145v-36h35m90 36v-36h-35M25 25v38h35m90-38v38h-35M87 25v36m0 84v-34"/></g>
+    <g fill="#111412" stroke="#66766b"><rect x="58" y="60" width="59" height="59" rx="2"/><rect x="58" y="55" width="59" height="59" rx="2"/></g>
+    <g transform="translate(69 64) scale(1.12)" fill="none" stroke="#edf0eb" stroke-width="2.4" stroke-linecap="square" stroke-linejoin="round"><path d="M3 7 8.6 25 16 17 23.4 25 29 7M10 7l6 10 6-10"/></g>
+  </g>
+  <g transform="matrix(1 .48 -1 .48 883 88)" fill="#1d221e" stroke="#66766b" stroke-width="1">
+    <rect x="23" y="25" width="55" height="120" rx="2"/><rect x="90" y="25" width="61" height="55" rx="2"/><rect x="90" y="91" width="61" height="54" rx="2"/>
+    <g fill="none"><path d="M23 47h55M90 47h61M90 111h61"/><path d="M33 36h25M100 36h25M100 101h25" stroke="#a3ada4" stroke-width="2"/><path d="M47 66h20m-20 7h12m-12 22h20m-20 7h12m-12 22h20m-20 7h12" stroke-width="2"/><path d="M100 135l10-9 9 5 10-11 12 4" stroke="#82d6b4" stroke-width="2"/></g>
+    <g fill="none" stroke="#82d6b4"><rect x="33" y="64" width="8" height="8"/><rect x="33" y="93" width="8" height="8"/><rect x="33" y="122" width="8" height="8"/></g><rect x="133" y="60" width="8" height="8" fill="#82d6b4" stroke="none"/>
+  </g>
+  <g font-family="IBM Plex Mono" font-size="11" fill="#849087"><text x="65" y="591">OPEN SOURCE · APACHE 2.0</text><text x="1136" y="591" text-anchor="end">walter.ax</text></g>
+</svg>

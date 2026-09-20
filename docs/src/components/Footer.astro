@@ -1,0 +1,98 @@
+---
+import Logo from "./Logo.astro";
+---
+
+<footer class="site-footer">
+  <div class="shell footer-main">
+    <div class="footer-brand">
+      <a href="/" aria-label="Walter home">
+        <Logo size={25} />
+        <span>walter</span>
+      </a>
+      <p>
+        Live query results
+        <br />
+        from Postgres.
+      </p>
+    </div>
+    <nav aria-label="Documentation resources">
+      <span class="kicker">Build</span>
+      <a href="/docs/quickstart/">Quickstart</a>
+      <a href="/docs/your-app/">Integration guide</a>
+      <a href="/docs/sql-support/">SQL reference</a>
+    </nav>
+    <nav aria-label="Project resources">
+      <span class="kicker">Explore</span>
+      <a href="https://github.com/walter-sql/walter">GitHub ↗</a>
+      <a href="https://www.npmjs.com/package/@walter-sql/engine">npm ↗</a>
+      <a href="/docs/how-it-works/">How Walter works</a>
+    </nav>
+    <nav aria-label="AI documentation">
+      <span class="kicker">For your tools</span>
+      <a href="/llms.txt">llms.txt ↗</a>
+      <a href="/llms-full.txt">Full LLM context ↗</a>
+      <a href="https://github.com/walter-sql/walter/blob/master/LICENSE">
+        Apache 2.0 license&nbsp;↗
+      </a>
+    </nav>
+  </div>
+</footer>
+<style>
+  .site-footer {
+    margin-top: 100px;
+    border-top: 1px solid var(--hairline);
+  }
+  :global(.docs-layout) ~ .site-footer {
+    margin-top: 0;
+  }
+  .footer-main {
+    display: grid;
+    grid-template-columns: 1.8fr 1fr 1fr 1fr;
+    gap: 32px;
+    padding-block: 52px;
+  }
+  .footer-brand > a {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    color: var(--ink);
+    text-decoration: none;
+    font-size: 26px;
+    font-weight: 650;
+    letter-spacing: -0.05em;
+  }
+  .footer-brand p {
+    margin-top: 14px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  nav {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    gap: 9px;
+  }
+  nav .kicker {
+    margin-bottom: 10px;
+    font-size: 10px;
+  }
+  nav a {
+    text-decoration: none;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  nav a:hover {
+    color: var(--ink);
+  }
+  @media (max-width: 760px) {
+    .footer-main {
+      grid-template-columns: 1fr 1fr;
+      gap: 36px 24px;
+      padding-block: 36px;
+    }
+    .site-footer {
+      margin-top: 64px;
+    }
+  }
+</style>

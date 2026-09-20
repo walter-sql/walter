@@ -1,0 +1,67 @@
+---
+import Base from "../layouts/Base.astro";
+---
+
+<Base
+  title="Page not found - Walter"
+  description="This page doesn't exist. Find your way back to the Walter documentation."
+>
+  <main id="main-content" class="shell not-found" tabindex="-1">
+    <div class="error-index" aria-hidden="true">
+      404
+    </div>
+    <p class="kicker">Page not found</p>
+    <h1>We couldn’t find this page.</h1>
+    <p>
+      The address may be incomplete or the page may have moved. You can find the
+      current pages in the documentation.
+    </p>
+    <div class="error-actions">
+      <a class="btn" href="/docs/">
+        Open the documentation <span aria-hidden="true">→</span>
+      </a>
+      <a class="arrow-link" href="/">
+        Back to home
+      </a>
+    </div>
+  </main>
+</Base>
+<style>
+  .not-found {
+    position: relative;
+    padding-top: 110px;
+    padding-bottom: 50px;
+    min-height: 550px;
+  }
+  .error-index {
+    color: var(--hairline-strong);
+    font: 80px var(--mono);
+    letter-spacing: -0.08em;
+    margin-bottom: 30px;
+  }
+  h1 {
+    font-size: clamp(36px, 5vw, 60px);
+    margin-top: 16px;
+    letter-spacing: -0.04em;
+  }
+  .not-found > p:not(.kicker) {
+    color: var(--muted);
+    max-width: 480px;
+    margin-top: 24px;
+  }
+  .error-actions {
+    display: flex;
+    align-items: center;
+    gap: 26px;
+    margin-top: 32px;
+    flex-wrap: wrap;
+  }
+  @media (max-width: 620px) {
+    .not-found {
+      padding-top: 55px;
+    }
+    .error-index {
+      font-size: 60px;
+    }
+  }
+</style>

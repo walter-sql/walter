@@ -1,0 +1,802 @@
+---
+const quickLinks = [
+  {
+    title: "Your first live query",
+    description: "Subscribe to a query from your own application.",
+    section: "Start here",
+    url: "/docs/quickstart/"
+  },
+  {
+    title: "Add live data to your app",
+    description: "Connect an authenticated server subscription to the browser.",
+    section: "Build your app",
+    url: "/docs/your-app/"
+  },
+  {
+    title: "Scaling",
+    description: "Configure owners, relays, and deployment topology.",
+    section: "Operations",
+    url: "/docs/scaling/"
+  },
+  {
+    title: "SQL support",
+    description: "Supported SQL constructs and restrictions.",
+    section: "Reference",
+    url: "/docs/sql-support/"
+  }
+];
+---
+
+<button
+  class="search-trigger"
+  type="button"
+  aria-label="Search documentation"
+  aria-haspopup="dialog"
+  aria-controls="docs-search-dialog"
+>
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.6"
+    aria-hidden="true"
+  >
+    <circle cx="10.5" cy="10.5" r="6.5" />
+    <path d="m16 16 4.5 4.5" />
+  </svg>
+  <span class="trigger-label">Search documentation</span>
+  <kbd class="search-shortcut">
+    <span data-shortcut-modifier>⌘</span> K
+  </kbd>
+</button>
+
+<dialog
+  id="docs-search-dialog"
+  class="search-dialog"
+  aria-labelledby="docs-search-title"
+>
+  <h2 id="docs-search-title" class="search-sr-only">
+    Search documentation
+  </h2>
+  <div class="search-field">
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.5"
+      aria-hidden="true"
+    >
+      <circle cx="10.5" cy="10.5" r="6.5" />
+      <path d="m16 16 4.5 4.5" />
+    </svg>
+    <input
+      id="docs-search-input"
+      type="text"
+      inputmode="search"
+      enterkeyhint="go"
+      placeholder="Search documentation…"
+      aria-label="Search documentation"
+      role="combobox"
+      aria-autocomplete="list"
+      aria-controls="docs-search-results"
+      aria-expanded="false"
+      autocomplete="off"
+      spellcheck="false"
+      autofocus
+    />
+    <button class="search-close" type="button" aria-label="Close search">
+      <span>esc</span>
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.6"
+        aria-hidden="true"
+      >
+        <path d="m6 6 12 12M18 6 6 18" />
+      </svg>
+    </button>
+  </div>
+  <div class="search-content">
+    <p id="docs-search-caption" class="search-caption">
+      Explore the docs
+    </p>
+    <ol
+      id="docs-search-results"
+      class="search-results"
+      role="listbox"
+      aria-label="Documentation results"
+    ></ol>
+    <div class="search-empty" hidden>
+      <svg
+        width="28"
+        height="28"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.25"
+        aria-hidden="true"
+      >
+        <circle cx="10.5" cy="10.5" r="6.5" />
+        <path d="m16 16 4.5 4.5" />
+      </svg>
+      <p class="search-state-title"></p>
+      <p class="search-state-detail"></p>
+      <button class="search-retry" type="button" hidden>
+        Try again
+      </button>
+    </div>
+  </div>
+  <div class="search-footer" aria-hidden="true">
+    <span>
+      <kbd>↑</kbd>
+      <kbd>↓</kbd> to navigate
+    </span>
+    <span>
+      <kbd>↵</kbd> to open
+    </span>
+    <span class="search-footer-brand">Walter docs</span>
+  </div>
+  <p
+    class="search-sr-only"
+    role="status"
+    aria-live="polite"
+    id="docs-search-status"
+  ></p>
+</dialog>
+
+<template id="docs-search-quick-links">
+  {quickLinks.map((link, index) => (
+    <li role="presentation">
+      <a
+        class="search-result"
+        href={link.url}
+        id={`docs-search-result-${index}`}
+        role="option"
+        aria-label={`${link.title}, ${link.section}. ${link.description}`}
+        aria-selected={index === 0 ? "true" : "false"}
+        tabindex="-1"
+      >
+        <span class="search-result-icon" aria-hidden="true">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.4"
+          >
+            <path d="M6 3.5h8l4 4V21H6z" />
+            <path d="M14 3.5V8h4M9 12h6M9 16h4" />
+          </svg>
+        </span>
+        <span class="search-result-copy">
+          <span class="search-result-heading">
+            <strong>{link.title}</strong>
+            <span class="search-result-section">{link.section}</span>
+          </span>
+          <span class="search-result-excerpt">{link.description}</span>
+        </span>
+        <span class="search-result-enter" aria-hidden="true">
+          ↵
+        </span>
+      </a>
+    </li>
+  ))}
+</template>
+
+<script>
+  import {
+    queryTerms,
+    searchDocuments,
+    type SearchDocument
+  } from "../lib/search";
+
+  const dialog = document.querySelector<HTMLDialogElement>(
+    "#docs-search-dialog"
+  )!;
+  const trigger = document.querySelector<HTMLButtonElement>(".search-trigger")!;
+  const input = dialog.querySelector<HTMLInputElement>("#docs-search-input")!;
+  const results = dialog.querySelector<HTMLOListElement>(".search-results")!;
+  const caption = dialog.querySelector<HTMLElement>(".search-caption")!;
+  const empty = dialog.querySelector<HTMLElement>(".search-empty")!;
+  const stateTitle = dialog.querySelector<HTMLElement>(".search-state-title")!;
+  const stateDetail = dialog.querySelector<HTMLElement>(
+    ".search-state-detail"
+  )!;
+  const retry = dialog.querySelector<HTMLButtonElement>(".search-retry")!;
+  const status = dialog.querySelector<HTMLElement>("#docs-search-status")!;
+  const quickLinks = document.querySelector<HTMLTemplateElement>(
+    "#docs-search-quick-links"
+  )!;
+
+  let documents: SearchDocument[] | undefined;
+  let pending: Promise<void> | undefined;
+  let loadError = false;
+  let selected = 0;
+  let previousFocus: HTMLElement | null = null;
+
+  const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+  document.querySelector<HTMLElement>("[data-shortcut-modifier]")!.textContent =
+    isMac ? "⌘" : "Ctrl";
+  trigger.setAttribute("aria-keyshortcuts", isMac ? "Meta+K" : "Control+K");
+
+  function select(index: number, scroll = false) {
+    const links = [
+      ...results.querySelectorAll<HTMLAnchorElement>(".search-result")
+    ];
+    if (!links.length) {
+      input.removeAttribute("aria-activedescendant");
+      return;
+    }
+    selected = (index + links.length) % links.length;
+    links.forEach((link, position) =>
+      link.setAttribute("aria-selected", String(position === selected))
+    );
+    input.setAttribute("aria-activedescendant", links[selected].id);
+    if (scroll) links[selected].scrollIntoView({ block: "nearest" });
+  }
+
+  function showState(title: string, detail: string, canRetry = false) {
+    input.setAttribute("aria-expanded", "false");
+    results.replaceChildren();
+    results.hidden = true;
+    empty.hidden = false;
+    stateTitle.textContent = title;
+    stateDetail.textContent = detail;
+    retry.hidden = !canRetry;
+    caption.textContent = "Documentation search";
+    status.textContent = title;
+    input.removeAttribute("aria-activedescendant");
+  }
+
+  function highlight(element: HTMLElement, text: string, terms: string[]) {
+    const escaped = terms
+      .map(term => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .sort((a, b) => b.length - a.length);
+    const pattern = new RegExp(`(${escaped.join("|")})`, "gi");
+    for (const part of text.split(pattern)) {
+      if (terms.includes(part.toLowerCase())) {
+        const mark = document.createElement("mark");
+        mark.textContent = part;
+        element.append(mark);
+      } else element.append(document.createTextNode(part));
+    }
+  }
+
+  function render() {
+    const query = input.value.trim();
+    results.hidden = false;
+    empty.hidden = true;
+    retry.hidden = true;
+    results.replaceChildren();
+
+    if (!query) {
+      results.append(quickLinks.content.cloneNode(true));
+      input.setAttribute("aria-expanded", "true");
+      caption.textContent = "Explore the docs";
+      status.textContent = "4 suggested pages. Use the arrow keys to navigate.";
+      select(0);
+      return;
+    }
+
+    if (!documents) {
+      showState(
+        loadError ? "Search is unavailable" : "Loading documentation…",
+        loadError
+          ? "Check your connection and try again."
+          : "The index will be ready in a moment.",
+        loadError
+      );
+      return;
+    }
+
+    const matches = searchDocuments(documents, query);
+    if (!matches.length) {
+      showState(
+        "No results found",
+        "Try a broader term, like “SQL”, “shapes”, or “configuration”."
+      );
+      return;
+    }
+
+    const terms = queryTerms(query);
+    const fragment = document.createDocumentFragment();
+    const template = quickLinks.content.querySelector("li")!;
+    matches.forEach((match, index) => {
+      const item = template.cloneNode(true) as HTMLLIElement;
+      const link = item.querySelector<HTMLAnchorElement>("a")!;
+      link.href = match.url;
+      link.id = `docs-search-result-${index}`;
+      link.setAttribute(
+        "aria-label",
+        `${match.title}, ${match.section}. ${match.excerpt}`
+      );
+      const title = item.querySelector<HTMLElement>("strong")!;
+      const excerpt = item.querySelector<HTMLElement>(
+        ".search-result-excerpt"
+      )!;
+      title.replaceChildren();
+      excerpt.replaceChildren();
+      highlight(title, match.title, terms);
+      highlight(excerpt, match.excerpt, terms);
+      item.querySelector<HTMLElement>(".search-result-section")!.textContent =
+        match.section;
+      fragment.append(item);
+    });
+    results.append(fragment);
+    input.setAttribute("aria-expanded", "true");
+    caption.textContent = `${matches.length} ${matches.length === 1 ? "result" : "results"}`;
+    status.textContent = `${matches.length} ${matches.length === 1 ? "result" : "results"} for ${query}.`;
+    select(0);
+  }
+
+  function loadIndex() {
+    if (documents || pending) return;
+    loadError = false;
+    pending = fetch("/search-index.json")
+      .then(response => {
+        if (!response.ok) throw new Error("Search index unavailable");
+        return response.json();
+      })
+      .then((data: SearchDocument[]) => {
+        if (!Array.isArray(data)) throw new Error("Invalid search index");
+        documents = data;
+      })
+      .catch(() => {
+        loadError = true;
+      })
+      .finally(() => {
+        pending = undefined;
+        if (dialog.open) render();
+      });
+  }
+
+  function openSearch() {
+    if (dialog.open) return;
+    previousFocus =
+      document.activeElement instanceof HTMLElement &&
+      document.activeElement !== document.body
+        ? document.activeElement
+        : trigger;
+    input.value = "";
+    render();
+    dialog.showModal();
+    document.documentElement.dataset.searchOpen = "true";
+    input.focus();
+    loadIndex();
+  }
+
+  trigger.addEventListener("click", openSearch);
+  dialog
+    .querySelector(".search-close")!
+    .addEventListener("click", () => dialog.close());
+  dialog.addEventListener("close", () => {
+    input.setAttribute("aria-expanded", "false");
+    delete document.documentElement.dataset.searchOpen;
+    previousFocus?.focus({ preventScroll: true });
+  });
+  dialog.addEventListener("keydown", event => {
+    if (event.key !== "Tab") return;
+    const lastControl = retry.hidden
+      ? dialog.querySelector<HTMLButtonElement>(".search-close")!
+      : retry;
+    if (event.shiftKey && document.activeElement === input) {
+      event.preventDefault();
+      lastControl.focus();
+    } else if (!event.shiftKey && document.activeElement === lastControl) {
+      event.preventDefault();
+      input.focus();
+    }
+  });
+  dialog.addEventListener("click", event => {
+    if (event.target !== dialog) return;
+    const bounds = dialog.getBoundingClientRect();
+    if (
+      event.clientX < bounds.left ||
+      event.clientX > bounds.right ||
+      event.clientY < bounds.top ||
+      event.clientY > bounds.bottom
+    )
+      dialog.close();
+  });
+  input.addEventListener("input", render);
+  input.addEventListener("keydown", event => {
+    if (event.isComposing) return;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      select(selected + (event.key === "ArrowDown" ? 1 : -1), true);
+    } else if (event.key === "Enter") {
+      const link = results.querySelector<HTMLAnchorElement>(
+        '[aria-selected="true"]'
+      );
+      if (link) {
+        event.preventDefault();
+        link.click();
+      }
+    }
+  });
+  results.addEventListener("pointermove", event => {
+    const link = (event.target as Element).closest(".search-result");
+    if (link)
+      select([...results.querySelectorAll(".search-result")].indexOf(link));
+  });
+  retry.addEventListener("click", () => {
+    loadIndex();
+    render();
+    input.focus();
+  });
+  document.addEventListener("keydown", event => {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      event.preventDefault();
+      if (dialog.open) dialog.close();
+      else openSearch();
+    }
+  });
+</script>
+
+<style>
+  .search-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    width: 254px;
+    height: 35px;
+    padding: 0 10px;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--muted);
+    font: 400 12px var(--sans);
+    text-align: left;
+    cursor: pointer;
+    transition:
+      color 160ms,
+      border-color 160ms,
+      background 160ms;
+  }
+  .search-trigger:hover {
+    color: var(--ink);
+    border-color: var(--faint);
+    background: var(--surface-raised);
+  }
+  .search-trigger > svg {
+    flex: 0 0 auto;
+  }
+  .search-shortcut {
+    margin-left: auto;
+    color: var(--faint);
+    font: 10px var(--mono);
+    white-space: nowrap;
+  }
+  .search-trigger:focus-visible,
+  .search-close:focus-visible,
+  .search-retry:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 3px;
+  }
+  :global(html[data-search-open="true"]) {
+    overflow: hidden;
+  }
+  .search-dialog {
+    box-sizing: border-box;
+    position: fixed;
+    inset: 0;
+    width: min(640px, calc(100vw - 40px));
+    max-width: none;
+    max-height: min(660px, calc(100dvh - 110px));
+    margin: min(15vh, 140px) auto auto;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 12px;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    box-shadow:
+      0 24px 100px #0005,
+      0 4px 16px #0002;
+  }
+  .search-dialog[open] {
+    display: flex;
+    flex-direction: column;
+    animation: search-in 140ms ease-out;
+  }
+  .search-dialog::backdrop {
+    background: #050a0c88;
+    backdrop-filter: blur(5px);
+  }
+  .search-field {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    min-height: 68px;
+    padding: 0 22px;
+    border-bottom: 1px solid var(--hairline);
+    flex-shrink: 0;
+  }
+  .search-field > svg {
+    color: var(--muted);
+    flex: 0 0 auto;
+  }
+  .search-field input {
+    min-width: 0;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--ink);
+    font: 400 17px var(--sans);
+    box-shadow: none;
+  }
+  .search-field input::placeholder {
+    color: var(--faint);
+  }
+  .search-close {
+    display: grid;
+    place-items: center;
+    min-width: 30px;
+    height: 25px;
+    padding: 0 5px;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--muted);
+    font: 10px var(--mono);
+    cursor: pointer;
+  }
+  .search-close:hover {
+    color: var(--ink);
+    background: var(--surface);
+  }
+  .search-close svg {
+    display: none;
+  }
+  .search-content {
+    min-height: 230px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 10px;
+  }
+  .search-caption {
+    margin: 8px 12px 11px;
+    color: var(--faint);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .search-results {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .search-results :global(li + li) {
+    margin-top: 3px;
+  }
+  .search-results :global(.search-result) {
+    display: flex;
+    gap: 13px;
+    align-items: center;
+    padding: 14px 12px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--ink);
+    text-decoration: none;
+    outline: none;
+  }
+  .search-results :global(.search-result[aria-selected="true"]) {
+    background: var(--surface);
+    border-color: var(--hairline);
+  }
+  .search-results :global(.search-result-icon) {
+    display: grid;
+    place-items: center;
+    align-self: flex-start;
+    padding-top: 2px;
+    color: var(--faint);
+    flex-shrink: 0;
+  }
+  .search-results :global(.search-result-copy) {
+    display: block;
+    flex: 1;
+    min-width: 0;
+  }
+  .search-results :global(.search-result-heading) {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .search-results :global(strong) {
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.5;
+    font-weight: 550;
+  }
+  .search-results :global(.search-result-section) {
+    color: var(--faint);
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  .search-results :global(.search-result-excerpt) {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+  .search-results :global(.search-result-enter) {
+    visibility: hidden;
+    color: var(--faint);
+    font: 15px var(--mono);
+  }
+  .search-results :global([aria-selected="true"] .search-result-enter) {
+    visibility: visible;
+  }
+  .search-results :global(mark) {
+    background: transparent;
+    color: var(--primary);
+    font-weight: inherit;
+  }
+  .search-empty {
+    padding: 38px 20px 44px;
+    text-align: center;
+  }
+  .search-empty > svg {
+    margin: 0 auto 17px;
+    color: var(--faint);
+  }
+  .search-state-title {
+    margin: 0 0 6px;
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .search-state-detail {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .search-retry {
+    margin-top: 18px;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 5px;
+    padding: 6px 12px;
+    background: var(--surface);
+    color: var(--ink);
+    font: 12px var(--sans);
+    cursor: pointer;
+  }
+  .search-footer {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 12px 22px;
+    border-top: 1px solid var(--hairline);
+    color: var(--faint);
+    font-size: 10px;
+    flex-shrink: 0;
+  }
+  .search-footer > span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .search-footer kbd {
+    display: inline-grid;
+    place-items: center;
+    min-width: 16px;
+    height: 18px;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 3px;
+    font: 10px var(--mono);
+  }
+  .search-footer .search-footer-brand {
+    margin-left: auto;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+  .search-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  [hidden] {
+    display: none !important;
+  }
+  @keyframes search-in {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @media (max-width: 900px) {
+    .search-trigger {
+      width: 34px;
+      justify-content: center;
+      padding: 0;
+      border-color: transparent;
+      background: transparent;
+    }
+    .trigger-label,
+    .search-shortcut {
+      display: none;
+    }
+  }
+  @media (max-width: 600px) {
+    .search-dialog {
+      width: calc(100vw - 24px);
+      margin-top: 20px;
+      max-height: calc(100dvh - 40px);
+      border-radius: 10px;
+    }
+    .search-field {
+      min-height: 62px;
+      padding: 0 16px;
+      gap: 11px;
+    }
+    .search-field input {
+      font-size: 16px;
+    }
+    .search-close {
+      border: 0;
+      height: 32px;
+      min-width: 30px;
+    }
+    .search-close span {
+      display: none;
+    }
+    .search-close svg {
+      display: block;
+    }
+    .search-results :global(.search-result) {
+      gap: 10px;
+      padding: 12px 10px;
+    }
+    .search-results :global(.search-result-heading) {
+      display: block;
+    }
+    .search-results :global(.search-result-section) {
+      display: block;
+      margin-top: 2px;
+    }
+    .search-footer {
+      padding: 12px 18px;
+    }
+    .search-footer > span:not(.search-footer-brand) {
+      display: none;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .search-dialog[open] {
+      animation: none;
+    }
+    .search-trigger {
+      transition: none;
+    }
+    .search-dialog::backdrop {
+      backdrop-filter: none;
+    }
+  }
+</style>

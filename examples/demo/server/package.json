@@ -1,0 +1,26 @@
+{
+  "name": "demo-server",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./router": "./src/router.ts",
+    "./shapes": "./src/shapes.ts"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "bot": "tsx src/bot.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@orpc/server": "^1.15.0",
+    "@walter-sql/client": "workspace:*",
+    "pg": "^8.23.0",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.1",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
+  }
+}

@@ -1,0 +1,591 @@
+---
+import { Code } from "astro:components";
+import { shikiThemes as themes } from "../shiki.mjs";
+const initialTodos = [
+  { id: 43, title: "Review the migration", done: false },
+  { id: 42, title: "Update the changelog", done: false },
+  { id: 41, title: "Fix the notification count", done: false }
+];
+const subscription = `const stream = walter.stream({
+  sql: \`SELECT id, title, done
+        FROM tasks WHERE NOT done
+        ORDER BY id DESC LIMIT 20\`
+});
+
+for await (const { rows } of materialize(stream)) {
+  render(rows);
+}`;
+---
+
+<div
+  class="live-query"
+  data-live-query
+  data-initial-todos={JSON.stringify(initialTodos)}
+>
+  <div class="query-editor">
+    <div class="panel-bar">
+      <span class="editor-title">Subscription</span>
+      <span class="editor-language">TypeScript</span>
+    </div>
+    <Code code={subscription} lang="ts" themes={themes} defaultColor={false} />
+  </div>
+  <div class="query-result">
+    <div class="panel-bar result-bar">
+      <span class="result-title">Live result</span>
+      <span class="result-count" data-count>
+        3 rows
+      </span>
+      <button
+        class="reset-demo"
+        type="button"
+        aria-label="Reset interactive example"
+      >
+        Reset <span aria-hidden="true">↺</span>
+      </button>
+    </div>
+    <form class="add-todo" aria-label="Add a task">
+      <label class="new-todo-field">
+        <span class="sr-only">New task title</span>
+        <input
+          name="title"
+          type="text"
+          placeholder="Add a task…"
+          autocomplete="off"
+          maxlength="120"
+          required
+        />
+      </label>
+      <button type="submit" disabled>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          aria-hidden="true"
+        >
+          <path d="M8 3v10M3 8h10" />
+        </svg>
+        Add
+      </button>
+    </form>
+    <div class="result-frame">
+      <div
+        class="result-table"
+        role="table"
+        aria-label="Unfinished tasks"
+        aria-rowcount="4"
+      >
+        <div class="result-head" role="row">
+          <span role="columnheader">id</span>
+          <span role="columnheader">title</span>
+          <span role="columnheader">done</span>
+        </div>
+        <div data-rows role="rowgroup">
+          {initialTodos.map(row => (
+            <div class="result-row" role="row" data-id={row.id}>
+              <div class="row-clip">
+                <div class="row-cells">
+                  <span class="row-id" role="cell">
+                    {row.id}
+                  </span>
+                  <span class="row-title" role="cell" title={row.title}>
+                    {row.title}
+                  </span>
+                  <span role="cell">
+                    <button
+                      class="complete-todo"
+                      type="button"
+                      aria-label={`Mark ${row.title} complete`}
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        aria-hidden="true"
+                      >
+                        <path d="m3 8 3 3 7-7" />
+                      </svg>
+                    </button>
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p class="empty-result" hidden>
+          No unfinished tasks. Add a task to this example.
+        </p>
+      </div>
+    </div>
+    <div class="stream-event" aria-label="Latest stream event">
+      <span class="event-label" data-event-label>
+        SNAPSHOT
+      </span>
+      <code data-event tabindex="0">
+        {'{ "type": "snapshot", "rows": [...] }'}
+      </code>
+    </div>
+    <p class="sr-only" data-demo-status role="status" aria-live="polite"></p>
+  </div>
+</div>
+<div class="demo-caption">
+  <span>
+    <span aria-hidden="true">↳</span> Interactive illustration. Add a task or
+    mark one complete.
+  </span>
+</div>
+<script>
+  type Todo = { id: number; title: string; done: false };
+  type Change =
+    | { op: "remove"; index: number }
+    | { op: "add"; value: Todo }
+    | { op: "reorder"; moves: { from: number; to: number }[] };
+
+  const demo = document.querySelector<HTMLElement>("[data-live-query]")!;
+  const rowGroup = demo.querySelector<HTMLElement>("[data-rows]")!;
+  const template = rowGroup.firstElementChild!.cloneNode(true) as HTMLElement;
+  const table = demo.querySelector<HTMLElement>(".result-table")!;
+  const event = demo.querySelector<HTMLElement>("[data-event]")!;
+  const eventLabel = demo.querySelector<HTMLElement>("[data-event-label]")!;
+  const count = demo.querySelector<HTMLElement>("[data-count]")!;
+  const empty = demo.querySelector<HTMLElement>(".empty-result")!;
+  const form = demo.querySelector<HTMLFormElement>(".add-todo")!;
+  const input = form.querySelector<HTMLInputElement>("input")!;
+  const addButton = form.querySelector<HTMLButtonElement>("button")!;
+  const status = demo.querySelector<HTMLElement>("[data-demo-status]")!;
+  const initial = JSON.parse(demo.dataset.initialTodos!) as Todo[];
+  const limit = 20;
+  let todos = [...initial];
+  let nextId = initial[0]!.id + 1;
+  const visible = () => todos.slice(0, limit);
+
+  function render(message: string, changes?: Change[]) {
+    const next = visible();
+    const rows = new Map(
+      [...rowGroup.children].map(row => [
+        Number((row as HTMLElement).dataset.id),
+        row as HTMLElement
+      ])
+    );
+    for (const todo of next) {
+      const row =
+        rows.get(todo.id) ?? (template.cloneNode(true) as HTMLElement);
+      row.dataset.id = String(todo.id);
+      row.querySelector(".row-id")!.textContent = String(todo.id);
+      const title = row.querySelector<HTMLElement>(".row-title")!;
+      title.textContent = title.title = todo.title;
+      row
+        .querySelector("button")!
+        .setAttribute("aria-label", `Mark ${todo.title} complete`);
+      rows.set(todo.id, row);
+    }
+    for (const [id, row] of rows) {
+      const leaving = !next.some(todo => todo.id === id);
+      row.inert = leaving;
+      row.setAttribute("aria-hidden", String(leaving));
+    }
+    let anchor = rowGroup.firstElementChild;
+    for (const [, row] of [...rows].sort(([a], [b]) => b - a)) {
+      if (row !== anchor) rowGroup.insertBefore(row, anchor);
+      anchor = row.nextElementSibling;
+    }
+    pruneRows();
+    count.textContent = `${next.length} ${next.length === 1 ? "row" : "rows"}`;
+    table.setAttribute("aria-rowcount", String(next.length + 1));
+    empty.hidden = next.length > 0;
+    eventLabel.textContent = changes ? "DIFF" : "SNAPSHOT";
+    event.textContent = changes
+      ? changes.map(change => JSON.stringify(change)).join("\n")
+      : '{ "type": "snapshot", "rows": [...] }';
+    event.scrollTop = event.scrollLeft = 0;
+    status.textContent = message;
+  }
+
+  function pruneRows() {
+    rowGroup.querySelectorAll<HTMLElement>("[inert]").forEach(row => {
+      const transitions = row.getAnimations();
+      if (!transitions.length) row.remove();
+      else
+        Promise.allSettled(
+          transitions.map(transition => transition.finished)
+        ).then(() => {
+          if (row.inert && !row.getAnimations().length) row.remove();
+        });
+    });
+  }
+
+  function clearInput() {
+    input.value = "";
+    addButton.disabled = true;
+  }
+  input.addEventListener("input", () => {
+    addButton.disabled = !input.value.trim();
+  });
+  form.addEventListener("submit", e => {
+    e.preventDefault();
+    const title = input.value.trim().slice(0, input.maxLength);
+    if (!title) return;
+    const previous = visible();
+    const todo: Todo = { id: nextId++, title, done: false };
+    todos.unshift(todo);
+    const changes: Change[] = [];
+    if (previous.length === limit)
+      changes.push({ op: "remove", index: limit - 1 });
+    changes.push({ op: "add", value: todo });
+    const from = Math.min(previous.length, limit - 1);
+    if (from) changes.push({ op: "reorder", moves: [{ from, to: 0 }] });
+    table.scrollTop = 0;
+    render(
+      `Added ${title}. ${visible().length} rows in the live result.`,
+      changes
+    );
+    clearInput();
+  });
+
+  rowGroup.addEventListener("click", e => {
+    const row = (e.target as Element).closest<HTMLElement>(".result-row");
+    if (!(e.target as Element).closest("button") || !row || row.inert) return;
+    const previous = visible();
+    const index = previous.findIndex(
+      todo => todo.id === Number(row.dataset.id)
+    );
+    const completed = previous[index]!;
+    todos = todos.filter(todo => todo !== completed);
+    const next = visible();
+    const changes: Change[] = [{ op: "remove", index }];
+    const backfill = next.find(todo => !previous.includes(todo));
+    if (backfill) changes.push({ op: "add", value: backfill });
+    render(
+      `Completed ${completed.title}. ${next.length} rows remain.`,
+      changes
+    );
+    const nextId = next[Math.min(index, next.length - 1)]?.id;
+    const nextButton = rowGroup.querySelector<HTMLButtonElement>(
+      `[data-id="${nextId}"] button`
+    );
+    nextButton?.focus({ preventScroll: true });
+  });
+
+  demo.querySelector(".reset-demo")!.addEventListener("click", () => {
+    todos = [...initial];
+    nextId = initial[0]!.id + 1;
+    table.scrollTop = 0;
+    clearInput();
+    render("Example reset. Snapshot received with three rows.");
+  });
+</script>
+<style>
+  .live-query {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--code-bg);
+  }
+  .query-editor,
+  .query-result {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .query-editor {
+    border-right: 1px solid var(--hairline);
+  }
+  .panel-bar {
+    display: flex;
+    align-items: center;
+    min-height: 54px;
+    padding-inline: 24px;
+    border-bottom: 1px solid var(--hairline);
+    gap: 24px;
+  }
+  .editor-title {
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .editor-language {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--faint);
+  }
+  .query-editor :global(.astro-code) {
+    border: 0;
+    background: transparent !important;
+    padding: 28px;
+    border-radius: 0;
+    font-size: 13px;
+    flex: 1;
+  }
+  .result-bar {
+    gap: 12px;
+  }
+  .result-title {
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .result-count {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--faint);
+  }
+  .reset-demo {
+    margin-left: auto;
+    border: 0;
+    padding: 5px 0 5px 10px;
+    color: var(--muted);
+    background: transparent;
+    font-size: 12px;
+  }
+  .reset-demo:hover {
+    color: var(--ink);
+  }
+  .reset-demo span {
+    margin-left: 8px;
+  }
+  .result-frame {
+    padding: 0 24px;
+  }
+  .result-table {
+    height: 229px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .result-head,
+  .row-cells {
+    display: grid;
+    grid-template-columns: 42px 1fr 40px;
+    align-items: center;
+    gap: 10px;
+  }
+  .result-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    height: 33px;
+    background: var(--code-bg);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--faint);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .row-cells {
+    min-height: 49px;
+    padding-block: 12px;
+    border-bottom: 1px solid var(--hairline);
+    font-size: 14px;
+  }
+  .result-row:last-child .row-cells {
+    border-bottom: 0;
+  }
+  .result-row {
+    display: grid;
+    grid-template-rows: 1fr;
+    opacity: 1;
+    transition:
+      grid-template-rows 180ms ease,
+      opacity 180ms ease;
+  }
+  .result-row[inert] {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    pointer-events: none;
+  }
+  @starting-style {
+    .result-row {
+      grid-template-rows: 0fr;
+      opacity: 0;
+    }
+  }
+  .row-clip {
+    min-height: 0;
+    overflow: hidden;
+  }
+  .row-title {
+    min-width: 0;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-height: 1.5;
+  }
+  .row-id {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+  }
+  .complete-todo {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 4px;
+    color: transparent;
+  }
+  .complete-todo::before {
+    content: "";
+    position: absolute;
+    width: 30px;
+    height: 36px;
+  }
+  .complete-todo:hover,
+  .complete-todo:focus-visible {
+    color: var(--primary);
+    border-color: var(--primary);
+  }
+  .add-todo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 24px 12px;
+  }
+  .new-todo-field {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+  }
+  .new-todo-field input {
+    width: 100%;
+    min-width: 0;
+    height: 36px;
+    padding: 0 11px;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--ink);
+    font-size: 13px;
+    transition: border-color 150ms;
+  }
+  .new-todo-field input::placeholder {
+    color: var(--faint);
+    opacity: 1;
+  }
+  .new-todo-field input:hover {
+    border-color: var(--muted);
+  }
+  .new-todo-field input:focus-visible {
+    border-color: var(--muted);
+    outline-offset: 3px;
+  }
+  .add-todo > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 4px;
+    background: var(--surface-raised);
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 500;
+    transition:
+      border-color 150ms,
+      background 150ms;
+  }
+  .add-todo > button:not(:disabled):hover {
+    border-color: var(--muted);
+    background: var(--surface);
+  }
+  .add-todo > button:disabled {
+    color: var(--faint);
+    background: transparent;
+    border-color: var(--hairline);
+  }
+  .stream-event {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    align-items: center;
+    height: 84px;
+    padding: 14px 24px;
+    border-top: 1px solid var(--hairline);
+  }
+  .event-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.07em;
+    color: var(--primary);
+  }
+  .stream-event code {
+    flex: 1;
+    min-width: 0;
+    max-height: 100%;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: 10px;
+    line-height: 1.7;
+    color: var(--muted);
+    scrollbar-width: thin;
+  }
+  .stream-event code:focus-visible {
+    outline-offset: 3px;
+  }
+  .empty-result {
+    padding-block: 50px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .demo-caption {
+    padding-top: 17px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .demo-caption span span {
+    margin-right: 6px;
+  }
+  @media (max-width: 760px) {
+    .live-query {
+      grid-template-columns: 1fr;
+    }
+    .query-editor {
+      border-right: 0;
+      border-bottom: 1px solid var(--hairline-strong);
+    }
+    .panel-bar {
+      padding-inline: 18px;
+      gap: 20px;
+    }
+    .query-editor :global(.astro-code) {
+      padding: 24px 18px;
+      font-size: 12px;
+    }
+    .result-frame {
+      padding-inline: 18px;
+    }
+    .stream-event {
+      padding-inline: 18px;
+    }
+    .add-todo {
+      padding-inline: 18px;
+    }
+    .new-todo-field input {
+      height: 40px;
+      font-size: 16px;
+    }
+    .add-todo > button {
+      height: 40px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .result-row,
+    .new-todo-field input,
+    .add-todo > button {
+      transition: none;
+    }
+  }
+</style>

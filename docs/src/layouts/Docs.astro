@@ -1,0 +1,300 @@
+---
+import type { MarkdownHeading } from "astro";
+import Base from "./Base.astro";
+import DocsIntro from "../components/DocsIntro.astro";
+import ScalingDiagram from "../components/ScalingDiagram.astro";
+import SubscriptionDiagram from "../components/SubscriptionDiagram.astro";
+import DocsNav from "../components/DocsNav.astro";
+import { orderedDocs, docPath, type Doc } from "../lib/docs";
+import "../styles/docs.css";
+
+interface Props {
+  doc: Doc;
+  headings: MarkdownHeading[];
+}
+
+const { doc, headings } = Astro.props;
+const docs = await orderedDocs();
+const here = docs.findIndex(entry => entry.id === doc.id);
+const prev = docs[here - 1];
+const next = docs[here + 1];
+const toc = headings.filter(
+  heading => heading.depth === 2 || heading.depth === 3
+);
+const jsonLd = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  headline: doc.data.title,
+  description: doc.data.description,
+  url: new URL(docPath(doc), Astro.site).href,
+  isPartOf: { "@type": "WebSite", name: "Walter", url: Astro.site?.href }
+});
+---
+
+<Base title={`${doc.data.title} - Walter`} description={doc.data.description}>
+  <script
+    is:inline
+    type="application/ld+json"
+    set:html={jsonLd}
+    slot="head"
+  ></script>
+  <div class="docs-mobile-bar">
+    <button
+      type="button"
+      class="docs-menu-button"
+      id="docs-menu-open"
+      aria-haspopup="dialog"
+      aria-controls="docs-menu"
+      aria-expanded="false"
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        aria-hidden="true"
+      >
+        <path d="M4 6h16M4 12h16M4 18h10" />
+      </svg>
+      <span>Documentation</span>
+    </button>
+    {toc.length > 0 && (
+      <details class="docs-mobile-toc">
+        <summary>
+          On this page{" "}
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            aria-hidden="true"
+          >
+            <path d="m4 6 4 4 4-4" />
+          </svg>
+        </summary>
+        <nav aria-label="On this page, mobile">
+          {toc.map(heading => (
+            <a
+              href={`#${heading.slug}`}
+              class:list={{ "toc-subheading": heading.depth === 3 }}
+            >
+              {heading.text}
+            </a>
+          ))}
+        </nav>
+      </details>
+    )}
+  </div>
+
+  <div class="shell docs-layout">
+    <aside class="docs-sidebar">
+      <a class="docs-sidebar-title" href="/docs/">
+        <svg
+          width="17"
+          height="17"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.4"
+          aria-hidden="true"
+        >
+          <path d="M4 4.5h6a3 3 0 0 1 3 3V21a4 4 0 0 0-4-2H4zM20 4.5h-4a3 3 0 0 0-3 3V21a4 4 0 0 1 4-2h3z" />
+        </svg>
+        Documentation
+      </a>
+      <DocsNav docs={docs} currentId={doc.id} />
+      <a
+        class="docs-sidebar-source"
+        href="https://github.com/walter-sql/walter"
+        target="_blank"
+        rel="noreferrer"
+      >
+        Source code
+        <svg
+          width="13"
+          height="13"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          aria-hidden="true"
+        >
+          <path d="M4 12 12 4M4 4h8v8" />
+        </svg>
+      </a>
+    </aside>
+
+    <main class="docs-main" id="main-content" tabindex="-1">
+      <article>
+        <header class="docs-article-header">
+          <div class="docs-breadcrumb">
+            <a href="/docs/">Docs</a>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.4"
+              aria-hidden="true"
+            >
+              <path d="m6 4 4 4-4 4" />
+            </svg>
+            <span>{doc.data.section}</span>
+          </div>
+          <h1>{doc.data.title}</h1>
+        </header>
+        {(doc.id === "index" || doc.id === "your-app") && (
+          <DocsIntro showWrites={doc.id === "your-app"} />
+        )}
+        {doc.id === "scaling" && <ScalingDiagram />}
+        {doc.id === "how-it-works" && <SubscriptionDiagram />}
+        <div class="prose docs-prose">
+          <slot />
+        </div>
+        <nav class="docs-pager" aria-label="Adjacent pages">
+          {prev ? (
+            <a
+              href={docPath(prev)}
+              rel="prev"
+              aria-label={`Previous: ${prev.data.title}`}
+            >
+              <span class="docs-pager-label">
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  aria-hidden="true"
+                >
+                  <path d="M13 8H3m5-5L3 8l5 5" />
+                </svg>
+                Previous
+              </span>
+              <span class="docs-pager-title">{prev.data.title}</span>
+            </a>
+          ) : (
+            <span />
+          )}
+          {next ? (
+            <a
+              href={docPath(next)}
+              rel="next"
+              aria-label={`Next: ${next.data.title}`}
+            >
+              <span class="docs-pager-label">
+                Next
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  aria-hidden="true"
+                >
+                  <path d="M3 8h10M8 3l5 5-5 5" />
+                </svg>
+              </span>
+              <span class="docs-pager-title">{next.data.title}</span>
+            </a>
+          ) : (
+            <span />
+          )}
+        </nav>
+      </article>
+    </main>
+
+    <aside class="docs-outline">
+      {toc.length > 0 && (
+        <nav class="docs-toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <ul>
+            <li>
+              <a href="#main-content" aria-current="location">
+                Overview
+              </a>
+            </li>
+            {toc.map(heading => (
+              <li class:list={{ "toc-subheading": heading.depth === 3 }}>
+                <a href={`#${heading.slug}`}>{heading.text}</a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
+      <div class="docs-resources">
+        <span>Resources</span>
+        <a href="/llms.txt">
+          LLM context{" "}
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.4"
+            aria-hidden="true"
+          >
+            <path d="M4 12 12 4M4 4h8v8" />
+          </svg>
+        </a>
+        <a href="/llms-full.txt">
+          Full documentation{" "}
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.4"
+            aria-hidden="true"
+          >
+            <path d="M4 12 12 4M4 4h8v8" />
+          </svg>
+        </a>
+      </div>
+    </aside>
+  </div>
+
+  <dialog
+    id="docs-menu"
+    class="docs-menu-dialog"
+    aria-labelledby="docs-menu-title"
+  >
+    <div class="docs-menu-heading">
+      <span id="docs-menu-title">Documentation</span>
+      <button
+        type="button"
+        id="docs-menu-close"
+        aria-label="Close documentation menu"
+        autofocus
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          aria-hidden="true"
+        >
+          <path d="m6 6 12 12M18 6 6 18" />
+        </svg>
+      </button>
+    </div>
+    <DocsNav docs={docs} currentId={doc.id} label="Documentation, mobile" />
+  </dialog>
+</Base>
+
+<script>
+  import { initializeDocs } from "../scripts/docs";
+
+  initializeDocs();
+</script>

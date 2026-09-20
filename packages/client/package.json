@@ -1,0 +1,47 @@
+{
+  "name": "@walter-sql/client",
+  "version": "0.0.0",
+  "description": "Connect your Node.js server to Walter for live SQL query results.",
+  "license": "Apache-2.0",
+  "homepage": "https://walter.ax",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/walter-sql/walter.git",
+    "directory": "packages/client"
+  },
+  "bugs": "https://github.com/walter-sql/walter/issues",
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@walter-sql/view": "workspace:*",
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.1",
+    "@types/ws": "^8.18.1",
+    "tsdown": "^0.23.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

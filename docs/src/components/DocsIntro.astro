@@ -1,0 +1,220 @@
+---
+interface Props {
+  showWrites?: boolean;
+}
+
+const { showWrites = false } = Astro.props;
+---
+
+<figure
+  class="docs-topology"
+  aria-label={`Data flows from Postgres through Walter to your server, which authorizes and forwards live results to your app.${showWrites ? " Writes go directly from your server to Postgres." : ""}`}
+>
+  <figcaption>
+    <span>The data path</span>
+    <span>
+      {showWrites ? "Reads and writes" : "From database to application"}
+    </span>
+  </figcaption>
+  <div class="topology-nodes">
+    <div class="topology-node">
+      <div class="topology-icon">
+        <svg
+          width="44"
+          height="44"
+          viewBox="0 0 44 44"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.25"
+          aria-hidden="true"
+        >
+          <ellipse cx="22" cy="10" rx="12" ry="5" />
+          <path d="M10 10v23c0 2.8 5.4 5 12 5s12-2.2 12-5V10M10 21c0 2.8 5.4 5 12 5s12-2.2 12-5M10 32c0 2.8 5.4 5 12 5s12-2.2 12-5" />
+          <path d="M14 17v3m0 8v3" opacity=".45" />
+        </svg>
+      </div>
+      <span class="topology-name">Postgres</span>
+      <span class="topology-detail">
+        {showWrites ? "Rows + changes" : "Your database"}
+      </span>
+    </div>
+    <div class="topology-node topology-engine">
+      <div class="topology-icon">
+        <svg
+          width="44"
+          height="44"
+          viewBox="0 0 44 44"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.25"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="m22 5 16 9-16 9-16-9 16-9Z" />
+          <path d="m6 22 16 9 16-9M6 30l16 9 16-9M6 14v16m32-16v16M22 23v16" />
+          <path d="m15 10 16 9M14 18l16-9" opacity=".4" />
+        </svg>
+      </div>
+      <span class="topology-name">Walter</span>
+      <span class="topology-detail">
+        {showWrites ? "Snapshot + diffs" : "Live SQL views"}
+      </span>
+    </div>
+    <div class="topology-node">
+      <div class="topology-icon">
+        <svg
+          width="44"
+          height="44"
+          viewBox="0 0 44 44"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.25"
+          aria-hidden="true"
+        >
+          <rect x="8" y="6" width="28" height="13" rx="3" />
+          <rect x="8" y="25" width="28" height="13" rx="3" />
+          <path
+            d="M22 19v6M13 12.5h1m4 0h12M13 31.5h1m4 0h12"
+            stroke-linecap="round"
+          />
+        </svg>
+      </div>
+      <span class="topology-name">Your server</span>
+      <span class="topology-detail">Access + delivery</span>
+    </div>
+    <div class="topology-node">
+      <div class="topology-icon">
+        <svg
+          width="44"
+          height="44"
+          viewBox="0 0 44 44"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.25"
+          aria-hidden="true"
+        >
+          <rect x="5" y="8" width="34" height="28" rx="3" />
+          <path d="M5 16h34M10 12h1m3 0h1" stroke-linecap="round" />
+          <path d="M11 23h10m-10 5h16m3-5h3" opacity=".55" />
+        </svg>
+      </div>
+      <span class="topology-name">Your app</span>
+      <span class="topology-detail">Live results</span>
+    </div>
+  </div>
+  {showWrites && (
+    <div class="topology-writes">
+      <span>Writes</span>
+      <span>
+        Your server <span aria-hidden="true">→</span> Postgres
+      </span>
+    </div>
+  )}
+</figure>
+
+<style>
+  .docs-topology {
+    margin: 3px 0 30px;
+    padding: 18px 22px 21px;
+    border: 1px solid var(--hairline);
+    border-radius: 7px;
+    background: var(--surface);
+  }
+  figcaption {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 23px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  figcaption > :first-child {
+    font-family: var(--mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .topology-nodes {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .topology-node {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .topology-node:not(:last-child)::before {
+    content: "";
+    position: absolute;
+    top: 22px;
+    left: calc(50% + 27px);
+    width: calc(100% - 54px);
+    height: 1px;
+    background: var(--hairline-strong);
+  }
+  .topology-icon {
+    color: var(--muted);
+  }
+  .topology-engine .topology-icon {
+    color: var(--ink);
+  }
+  .topology-name {
+    margin-top: 11px;
+    color: var(--ink);
+    font-size: 12px;
+    line-height: 1.4;
+    font-weight: 550;
+  }
+  .topology-detail {
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.5;
+  }
+  .topology-writes {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid var(--hairline);
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .topology-writes > :last-child {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ink);
+  }
+  @media (max-width: 480px) {
+    .docs-topology {
+      padding: 15px 10px 18px;
+      margin-bottom: 25px;
+    }
+    figcaption {
+      padding-inline: 5px;
+      margin-bottom: 20px;
+      font-size: 10px;
+    }
+    .topology-icon svg {
+      width: 35px;
+      height: 35px;
+    }
+    .topology-node:not(:last-child)::before {
+      top: 17px;
+      left: calc(50% + 21px);
+      width: calc(100% - 42px);
+    }
+    .topology-name {
+      font-size: 11px;
+    }
+    .topology-detail {
+      font-size: 9px;
+    }
+  }
+</style>

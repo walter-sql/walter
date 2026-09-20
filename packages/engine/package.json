@@ -1,0 +1,62 @@
+{
+  "name": "@walter-sql/engine",
+  "version": "0.0.0",
+  "description": "Keep Postgres SQL query results live as data changes.",
+  "license": "Apache-2.0",
+  "homepage": "https://walter.ax",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/walter-sql/walter.git",
+    "directory": "packages/engine"
+  },
+  "bugs": "https://github.com/walter-sql/walter/issues",
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "walter": "./dist/bin/walter.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsx watch src/bin/walter.ts",
+    "start": "node dist/bin/walter.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "e2e": "tsx e2e/differential.ts && tsx e2e/stress.ts",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@walter-sql/client": "workspace:*",
+    "@walter-sql/view": "workspace:*",
+    "libpg-query": "17.7.4",
+    "pg": "^8.23.0",
+    "pg-logical-replication": "^2.5.0",
+    "pino": "^10.3.1",
+    "ws": "^8.21.3",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.1",
+    "@types/pg": "^8.23.1",
+    "@types/ws": "^8.18.1",
+    "tsdown": "^0.23.0",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

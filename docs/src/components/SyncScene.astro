@@ -1,0 +1,527 @@
+---
+import Logo from "./Logo.astro";
+
+const gridLines = Array.from({ length: 9 }, (_, index) => index * 40);
+const databaseRows = [0, 1, 2, 3, 4];
+const viewRows = [0, 1, 2];
+---
+
+<figure class="sync-scene">
+  <svg
+    class="scene-drawing"
+    viewBox="0 0 600 490"
+    role="img"
+    aria-labelledby="sync-scene-title sync-scene-description"
+  >
+    <title id="sync-scene-title">From a committed change to a live view</title>
+    <desc id="sync-scene-description">
+      An exploded isometric diagram. Postgres changes flow upward through
+      Walter's incremental dataflow into live SQL views on your server.
+    </desc>
+    <defs>
+      <linearGradient id="sync-plane" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="var(--surface)" />
+        <stop offset="1" stop-color="var(--bg)" />
+      </linearGradient>
+      <linearGradient id="sync-edge" x1="0" y1="0" x2="0" y2="1">
+        <stop
+          offset="0"
+          stop-color="color-mix(in srgb, var(--hairline-strong) 65%, var(--bg))"
+        />
+        <stop
+          offset="1"
+          stop-color="color-mix(in srgb, var(--hairline) 20%, var(--bg))"
+        />
+      </linearGradient>
+      <radialGradient id="sync-grid-fade">
+        <stop offset=".35" stop-color="white" />
+        <stop offset="1" stop-color="black" />
+      </radialGradient>
+      <mask id="sync-grid-mask">
+        <ellipse
+          cx="300"
+          cy="375"
+          rx="290"
+          ry="115"
+          fill="url(#sync-grid-fade)"
+        />
+      </mask>
+    </defs>
+
+    <!-- A quiet drafting grid anchors the geometry, with no floating motion. -->
+    <g class="ground-grid" mask="url(#sync-grid-mask)">
+      <g transform="matrix(1 .48 -1 .48 300 213)">
+        {gridLines.map(position => (
+          <path d={`M${position} 0V360 M0 ${position}H360`} />
+        ))}
+      </g>
+    </g>
+    <g class="registration">
+      <path d="M82 77h10m-5-5v10 M511 77h10m-5-5v10 M82 435h10m-5-5v10 M511 435h10m-5-5v10" />
+      <path class="axis" d="M300 35V458" />
+    </g>
+
+    <!-- 01 / Postgres. Relational records, seen in the same projection as the engine. -->
+    <g class="database-plane">
+      <path
+        class="plane-side"
+        d="m130 356 170 81.6 170-81.6v9L300 447.6 130 365z"
+      />
+      <g transform="matrix(1 .48 -1 .48 300 274.4)">
+        <rect class="plane" width="170" height="170" rx="2" />
+        <path
+          class="plate-inset"
+          d="M10 25V10h25 M135 10h25v25 M160 135v25h-25 M35 160H10v-25"
+        />
+        <rect
+          class="record-table"
+          x="30"
+          y="28"
+          width="112"
+          height="112"
+          rx="2"
+        />
+        <path class="table-rule" d="M30 50H142 M56 28V140 M100 28V140" />
+        {databaseRows.map(row => (
+          <g transform={`translate(0 ${row * 17})`}>
+            <path class="table-rule" d="M30 68H142" />
+            <path class="record-mark" d="M38 60h9 M65 60h23 M109 60h22" />
+          </g>
+        ))}
+        <path class="changed-record" d="M32 85H140V101H32z" />
+        <path class="active-record-mark" d="M38 93h9 M65 93h23 M109 93h22" />
+        <circle class="mount" cx="17" cy="17" r="2" />
+        <circle class="mount" cx="153" cy="153" r="2" />
+      </g>
+    </g>
+
+    <!-- Each transfer is drawn after its source and before its destination.
+         The complete path continues behind the next plate. -->
+    <g class="interconnect">
+      <path class="connection" d="M231 385V270 M369 385V270" />
+      <path class="packet packet-one" d="M231 385V270" />
+      <path class="packet packet-two" d="M369 385V270" />
+      {[231, 369].map(x => (
+        <circle class="port" cx={x} cy="385" r="3" />
+      ))}
+    </g>
+
+    <!-- 02 / Walter. A directed dataflow, not a second copy of the database. -->
+    <g class="engine-plane">
+      <path
+        class="engine-side"
+        d="m130 241 170 81.6L470 241v9L300 331.6 130 250z"
+      />
+      <g transform="matrix(1 .48 -1 .48 300 159.4)">
+        <rect class="plane engine-plate" width="170" height="170" rx="2" />
+        <path
+          class="plate-inset"
+          d="M10 25V10h25 M135 10h25v25 M160 135v25h-25 M35 160H10v-25"
+        />
+        <g class="circuit">
+          <path d="M28 145V114H58V96 M142 145V114H112V96 M85 145V110" />
+          <path d="M28 28V56H58V74 M142 28V56H112V74 M85 28V60" />
+          <path d="M18 86H58 M112 86H152" />
+          <path
+            class="circuit-secondary"
+            d="M18 102H41V131H60 M152 102H129V131H110 M18 70H41V41H60 M152 70H129V41H110"
+          />
+        </g>
+        <g class="nodes">
+          <rect x="22" y="139" width="12" height="12" rx="1" />
+          <rect x="136" y="139" width="12" height="12" rx="1" />
+          <rect x="79" y="139" width="12" height="12" rx="1" />
+          <rect x="22" y="22" width="12" height="12" rx="1" />
+          <rect x="136" y="22" width="12" height="12" rx="1" />
+          <rect x="79" y="22" width="12" height="12" rx="1" />
+        </g>
+        <rect
+          class="processor-base"
+          x="59"
+          y="62"
+          width="52"
+          height="52"
+          rx="3"
+        />
+        <rect class="processor" x="59" y="57" width="52" height="52" rx="3" />
+        <g class="processor-symbol" transform="translate(66 64)">
+          <Logo size={38} />
+        </g>
+        <circle class="mount" cx="17" cy="17" r="2" />
+        <circle class="mount" cx="153" cy="153" r="2" />
+      </g>
+    </g>
+
+    <g class="interconnect">
+      <path class="connection" d="M231 270V155 M369 270V155" />
+      <path class="packet packet-three" d="M231 270V155" />
+      <path class="packet packet-four" d="M369 270V155" />
+      {[231, 369].map(x => (
+        <circle class="port" cx={x} cy="270" r="3" />
+      ))}
+    </g>
+
+    <!-- 03 / Live views. Each result is its own maintained projection. -->
+    <g class="views-plane">
+      <path
+        class="plane-side"
+        d="m130 126 170 81.6L470 126v6L300 213.6 130 132z"
+      />
+      <g transform="matrix(1 .48 -1 .48 300 44.4)">
+        <rect class="plane view-plate" width="170" height="170" rx="2" />
+        <path
+          class="plate-inset"
+          d="M10 25V10h25 M135 10h25v25 M160 135v25h-25 M35 160H10v-25"
+        />
+        <g transform="translate(25 24)">
+          <rect
+            class="view-shadow"
+            x="2"
+            y="5"
+            width="52"
+            height="112"
+            rx="2"
+          />
+          <rect class="view-sheet" width="52" height="112" rx="2" />
+          <path class="view-header" d="M0 21H52" />
+          <path class="view-title" d="M8 11H26" />
+          {viewRows.map(row => (
+            <g transform={`translate(0 ${row * 25})`}>
+              <rect
+                class="view-cell"
+                x="8"
+                y="32"
+                width="9"
+                height="9"
+                rx="1"
+              />
+              <path class="view-value" d="M24 34H43 M24 40H36" />
+              <path class="view-rule" d="M8 50H44" />
+            </g>
+          ))}
+        </g>
+        <g transform="translate(88 24)">
+          <rect class="view-shadow" x="2" y="5" width="58" height="52" rx="2" />
+          <rect class="view-sheet" width="58" height="52" rx="2" />
+          <path class="view-header" d="M0 21H58" />
+          <path class="view-title" d="M8 11H30" />
+          <path class="view-value" d="M8 32H33 M8 39H22" />
+          <rect
+            class="view-live-cell"
+            x="41"
+            y="31"
+            width="8"
+            height="8"
+            rx="1"
+          />
+        </g>
+        <g transform="translate(88 87)">
+          <rect class="view-shadow" x="2" y="5" width="58" height="49" rx="2" />
+          <rect class="view-sheet" width="58" height="49" rx="2" />
+          <path class="view-header" d="M0 18H58" />
+          <path class="view-title" d="M8 9H22" />
+          <path class="sparkline" d="M8 38 17 32 24 35 33 26 41 29 49 23" />
+        </g>
+        <circle class="mount" cx="17" cy="17" r="2" />
+        <circle class="mount" cx="153" cy="153" r="2" />
+      </g>
+    </g>
+
+    {[231, 369].map(x => (
+      <circle class="port" cx={x} cy="155" r="3" />
+    ))}
+
+    <!-- Labels stay horizontal, so the illustration remains readable at small sizes. -->
+    <g class="annotations">
+      <path class="leader" d="M417 100H467" />
+      <circle class="leader-dot" cx="417" cy="100" r="2" />
+      <text class="annotation-number" x="483" y="84">
+        03
+      </text>
+      <text class="annotation-name" x="483" y="104">
+        Live views
+      </text>
+      <text class="annotation-detail" x="483" y="121">
+        YOUR SERVER
+      </text>
+
+      <path class="leader" d="M184 242H133L117 226H38" />
+      <circle class="leader-dot active-dot" cx="184" cy="242" r="2" />
+      <text class="annotation-number" x="38" y="188">
+        02
+      </text>
+      <text class="annotation-name engine-label" x="38" y="208">
+        Walter
+      </text>
+      <text class="annotation-detail" x="38" y="246">
+        INCREMENTAL
+      </text>
+      <text class="annotation-detail" x="38" y="260">
+        DATAFLOW
+      </text>
+
+      <path class="leader" d="M415 377H467" />
+      <circle class="leader-dot" cx="415" cy="377" r="2" />
+      <text class="annotation-number" x="483" y="361">
+        01
+      </text>
+      <text class="annotation-name" x="483" y="381">
+        Postgres
+      </text>
+      <text class="annotation-detail" x="483" y="398">
+        COMMITTED WAL
+      </text>
+    </g>
+  </svg>
+</figure>
+
+<style>
+  .sync-scene {
+    width: 100%;
+    max-width: 660px;
+    margin: 0;
+    --scene-line: color-mix(in srgb, var(--muted) 43%, var(--bg));
+    --scene-face: color-mix(in srgb, var(--surface) 88%, var(--bg));
+    --scene-etch: color-mix(in srgb, var(--muted) 67%, var(--bg));
+  }
+
+  .scene-drawing {
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  .ground-grid {
+    fill: none;
+    stroke: var(--hairline-strong);
+    stroke-width: 0.7;
+    opacity: 0.65;
+  }
+  .registration {
+    fill: none;
+    stroke: var(--hairline-strong);
+    stroke-width: 0.8;
+  }
+  .registration .axis {
+    stroke-dasharray: 2 7;
+    opacity: 0.35;
+  }
+  .plane {
+    fill: url(#sync-plane);
+    stroke: var(--scene-line);
+    stroke-width: 0.8;
+  }
+  .plane-side {
+    fill: url(#sync-edge);
+    stroke: var(--scene-line);
+    stroke-width: 0.65;
+  }
+  .plate-inset {
+    fill: none;
+    stroke: var(--hairline-strong);
+    stroke-width: 0.7;
+  }
+  .mount {
+    fill: none;
+    stroke: var(--scene-line);
+    stroke-width: 0.7;
+  }
+  .record-table {
+    fill: var(--scene-face);
+    stroke: var(--scene-line);
+    stroke-width: 0.8;
+  }
+  .table-rule {
+    fill: none;
+    stroke: var(--hairline-strong);
+    stroke-width: 0.65;
+  }
+  .record-mark {
+    fill: none;
+    stroke: var(--scene-etch);
+    stroke-width: 1.7;
+  }
+  .changed-record {
+    fill: var(--primary-wash);
+  }
+  .active-record-mark {
+    fill: none;
+    stroke: var(--primary);
+    stroke-width: 1.7;
+  }
+
+  .connection {
+    fill: none;
+    stroke: var(--primary);
+    stroke-opacity: 0.3;
+    stroke-width: 0.9;
+    stroke-dasharray: 2 4;
+  }
+  .port {
+    fill: var(--bg);
+    stroke: var(--primary);
+    stroke-width: 1;
+  }
+  .packet {
+    fill: none;
+    stroke: var(--primary);
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-dasharray: 7 140;
+    stroke-dashoffset: 7;
+    animation: transmit 4.8s linear infinite;
+  }
+  .packet-two {
+    animation-delay: -2.4s;
+  }
+  .packet-three {
+    animation-delay: -1.2s;
+  }
+  .packet-four {
+    animation-delay: -3.6s;
+  }
+
+  .engine-plate {
+    stroke: color-mix(in srgb, var(--primary) 65%, var(--scene-line));
+  }
+  .engine-side {
+    fill: var(--primary-wash);
+    stroke: var(--primary);
+    stroke-opacity: 0.6;
+    stroke-width: 0.7;
+  }
+  .circuit {
+    fill: none;
+    stroke: var(--primary);
+    stroke-width: 1.15;
+    opacity: 0.8;
+  }
+  .circuit-secondary {
+    stroke: var(--scene-line);
+    stroke-width: 0.8;
+  }
+  .nodes {
+    fill: var(--scene-face);
+    stroke: var(--primary);
+    stroke-width: 0.8;
+  }
+  .processor-base {
+    fill: var(--hairline);
+    stroke: var(--scene-line);
+    stroke-width: 0.7;
+  }
+  .processor {
+    fill: var(--bg);
+    stroke: var(--scene-etch);
+    stroke-width: 1.1;
+  }
+  .processor-symbol {
+    color: var(--primary);
+  }
+
+  .view-shadow {
+    fill: var(--hairline);
+    stroke: var(--scene-line);
+    stroke-width: 0.6;
+  }
+  .view-sheet {
+    fill: var(--surface);
+    stroke: var(--scene-line);
+    stroke-width: 0.8;
+  }
+  .view-header,
+  .view-rule {
+    fill: none;
+    stroke: var(--hairline-strong);
+    stroke-width: 0.7;
+  }
+  .view-title {
+    stroke: var(--ink);
+    stroke-width: 2;
+    stroke-opacity: 0.75;
+  }
+  .view-value {
+    stroke: var(--scene-etch);
+    stroke-width: 1.6;
+  }
+  .view-cell {
+    fill: var(--primary-wash);
+    stroke: var(--primary);
+    stroke-width: 0.65;
+  }
+  .view-live-cell {
+    fill: var(--primary);
+  }
+  .sparkline {
+    fill: none;
+    stroke: var(--primary);
+    stroke-width: 1.5;
+  }
+
+  .leader {
+    fill: none;
+    stroke: var(--scene-line);
+    stroke-width: 0.75;
+  }
+  .leader-dot {
+    fill: var(--muted);
+  }
+  .active-dot {
+    fill: var(--primary);
+  }
+  .annotations text {
+    font-family: var(--mono);
+  }
+  .annotation-number {
+    fill: var(--faint);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+  }
+  .annotation-name {
+    fill: var(--ink);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: -0.025em;
+  }
+  .annotation-detail {
+    fill: var(--muted);
+    font-size: 7.5px;
+    letter-spacing: 0.07em;
+  }
+  .engine-label {
+    fill: var(--primary);
+  }
+
+  @keyframes transmit {
+    0% {
+      stroke-dashoffset: 7;
+      opacity: 0;
+    }
+    8% {
+      opacity: 1;
+    }
+    72% {
+      opacity: 1;
+    }
+    88%,
+    100% {
+      stroke-dashoffset: -122;
+      opacity: 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .packet {
+      animation: none;
+      stroke-dashoffset: -28;
+      opacity: 0.8;
+    }
+  }
+  @media (max-width: 480px) {
+    .annotation-name {
+      font-size: 18px;
+    }
+    .annotation-detail,
+    .annotation-number {
+      display: none;
+    }
+  }
+</style>

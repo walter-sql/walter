@@ -1,0 +1,36 @@
+---
+import { sections } from "../content.config";
+import { docPath, type Doc } from "../lib/docs";
+
+interface Props {
+  docs: Doc[];
+  currentId: string;
+  label?: string;
+}
+
+const { docs, currentId, label = "Documentation" } = Astro.props;
+const groups = sections.map(name => ({
+  name,
+  docs: docs.filter(doc => doc.data.section === name)
+}));
+---
+
+<nav class="docs-nav" aria-label={label}>
+  {groups.map(group => (
+    <section>
+      <h2>{group.name}</h2>
+      <ul>
+        {group.docs.map(doc => (
+          <li>
+            <a
+              href={docPath(doc)}
+              aria-current={doc.id === currentId ? "page" : undefined}
+            >
+              {doc.data.title}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  ))}
+</nav>

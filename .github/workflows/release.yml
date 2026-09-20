@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    env:
+      IMAGE: ghcr.io/walter-sql/engine
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - name: Version and channel from the tag
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "CHANNEL=$([[ $VERSION == *-* ]] && echo next || echo latest)" >> "$GITHUB_ENV"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm set-version "$VERSION"
+      - run: pnpm build
+      # Overwritable steps first: npm is the one publish that cannot be redone.
+      - name: Push image
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker build -f packages/engine/Dockerfile -t "$IMAGE:$VERSION" -t "$IMAGE:$CHANNEL" .
+          docker push --all-tags "$IMAGE"
+      - name: Publish packages
+        run: pnpm -r --filter './packages/*' publish --no-git-checks --tag "$CHANNEL"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Deploy docs
+        run: |
+          curl -fsS -X POST "$DOKPLOY_URL/api/application.deploy" \
+            -H "x-api-key: $DOKPLOY_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"applicationId\":\"$DOKPLOY_APP_ID\"}"
+        env:
+          DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          DOKPLOY_APP_ID: ${{ secrets.DOKPLOY_APP_ID }}
+      - name: GitHub release
+        run: |
+          PREV=$(git describe --tags --abbrev=0 --exclude '*-*' HEAD^ 2>/dev/null || true)
+          gh release create "$GITHUB_REF_NAME" \
+            --notes "$(git log --pretty='- %s' ${PREV:+$PREV..}HEAD)" \
+            $([[ $CHANNEL == next ]] && echo --prerelease)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

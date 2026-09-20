@@ -1,0 +1,144 @@
+<figure class="subscription-diagram" aria-labelledby="subscription-caption">
+  <figcaption id="subscription-caption">
+    <span>Updating a result</span>
+    <span>A task title changes</span>
+  </figcaption>
+  <div class="result-flow">
+    <div class="result">
+      <span class="result-label">Initial snapshot</span>
+      <div class="result-row">
+        <code>42</code>
+        <span>Review the migration</span>
+      </div>
+      <div class="result-row">
+        <code>41</code>
+        <span>Update the changelog</span>
+      </div>
+    </div>
+    <div class="change">
+      <span>diff</span>
+      <svg
+        viewBox="0 0 64 16"
+        width="64"
+        height="16"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.2"
+        aria-hidden="true"
+      >
+        <path d="M2 8h58m-5-5 5 5-5 5" />
+      </svg>
+      <small>Update one field</small>
+    </div>
+    <div class="result">
+      <span class="result-label">Updated rows</span>
+      <div class="result-row changed">
+        <code>42</code>
+        <span>Migration reviewed</span>
+      </div>
+      <div class="result-row">
+        <code>41</code>
+        <span>Update the changelog</span>
+      </div>
+    </div>
+  </div>
+  <p>The view helper applies the diff to the rows it already holds.</p>
+</figure>
+<style>
+  .subscription-diagram {
+    margin: 3px 0 30px;
+    padding: 18px 20px;
+    border: 1px solid var(--hairline);
+    border-radius: 7px;
+    background: var(--surface);
+  }
+  figcaption {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    color: var(--muted);
+    font-size: 11px;
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+  figcaption > :first-child {
+    font: 9px var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .result-flow {
+    display: grid;
+    grid-template-columns: 1fr 98px 1fr;
+    align-items: center;
+  }
+  .result {
+    min-width: 0;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 4px;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  .result-label {
+    display: block;
+    padding: 8px 10px;
+    color: var(--muted);
+    font: 9px var(--mono);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .result-row {
+    display: flex;
+    gap: 9px;
+    padding: 8px 10px;
+    align-items: baseline;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .result-row + .result-row {
+    border-top: 1px solid var(--hairline);
+  }
+  code {
+    font-size: 9px;
+    color: var(--muted);
+  }
+  .changed {
+    color: var(--primary);
+    background: var(--primary-wash);
+  }
+  .change {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    color: var(--muted);
+  }
+  .change > span {
+    font: 10px var(--mono);
+  }
+  .change small {
+    font-size: 9px;
+  }
+  p {
+    margin-top: 18px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  @media (max-width: 600px) {
+    .result-flow {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    .change {
+      flex-direction: row;
+      justify-content: center;
+      gap: 12px;
+    }
+    .change svg {
+      width: 16px;
+      transform: rotate(90deg);
+    }
+    .result-row {
+      font-size: 12px;
+    }
+  }
+</style>
