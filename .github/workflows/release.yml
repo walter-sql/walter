@@ -44,6 +44,19 @@ jobs:
         run: pnpm -r --filter './packages/*' publish --no-git-checks --tag "$CHANNEL"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: GitHub release
+        run: |
+          PREV=$(git describe --tags --abbrev=0 --exclude '*-*' HEAD^ 2>/dev/null || true)
+          gh release create "$GITHUB_REF_NAME" \
+            --notes "$(git log --pretty='- %s' ${PREV:+$PREV..}HEAD)" \
+            $([[ $CHANNEL == next ]] && echo --prerelease)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  docs:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
       - name: Deploy docs
         run: |
           curl -fsS -X POST "$DOKPLOY_URL/api/application.deploy" \
@@ -54,11 +67,3 @@ jobs:
           DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
           DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
           DOKPLOY_APP_ID: ${{ secrets.DOKPLOY_APP_ID }}
-      - name: GitHub release
-        run: |
-          PREV=$(git describe --tags --abbrev=0 --exclude '*-*' HEAD^ 2>/dev/null || true)
-          gh release create "$GITHUB_REF_NAME" \
-            --notes "$(git log --pretty='- %s' ${PREV:+$PREV..}HEAD)" \
-            $([[ $CHANNEL == next ]] && echo --prerelease)
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
