@@ -14,6 +14,7 @@ jobs:
     permissions:
       contents: write
       packages: write
+      id-token: write
     env:
       IMAGE: ghcr.io/walter-sql/engine
     steps:
@@ -25,7 +26,6 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-          registry-url: https://registry.npmjs.org
       - name: Version and channel from the tag
         run: |
           VERSION=${GITHUB_REF_NAME#v}
@@ -42,8 +42,6 @@ jobs:
           docker push --all-tags "$IMAGE"
       - name: Publish packages
         run: pnpm -r --filter './packages/*' publish --no-git-checks --tag "$CHANNEL"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: GitHub release
         run: |
           PREV=$(git describe --tags --abbrev=0 --exclude '*-*' HEAD^ 2>/dev/null || true)
