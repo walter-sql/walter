@@ -377,7 +377,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 28px;
+  margin-bottom: 12px;
   padding-left: 10px;
   font-size: 15px;
   font-weight: 600;
@@ -394,6 +394,22 @@
   cursor: pointer;
 }
 .docs-menu-heading button:hover {
+  color: var(--ink);
+  background: var(--surface);
+}
+.docs-menu-source {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  margin-bottom: 24px;
+  padding: 10px;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--muted);
+  font-size: 14px;
+  text-decoration: none;
+}
+.docs-menu-source:hover {
   color: var(--ink);
   background: var(--surface);
 }
