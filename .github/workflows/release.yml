@@ -50,18 +50,3 @@ jobs:
             $([[ $CHANNEL == next ]] && echo --prerelease)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  docs:
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy docs
-        run: |
-          curl -fsS -X POST "$DOKPLOY_URL/api/application.deploy" \
-            -H "x-api-key: $DOKPLOY_API_KEY" \
-            -H "Content-Type: application/json" \
-            -d "{\"applicationId\":\"$DOKPLOY_APP_ID\"}"
-        env:
-          DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
-          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
-          DOKPLOY_APP_ID: ${{ secrets.DOKPLOY_APP_ID }}
