@@ -3,7 +3,7 @@ import pg from "pg";
 import { LogicalReplicationService } from "pg-logical-replication";
 import type { SchemaCatalog } from "../parser/catalog";
 import { qualifiedTable, splitQualified } from "../parser/ir";
-import { ident, SESSION_PINS } from "../lazy/pg-source";
+import { ident, KEEPALIVE, SESSION_PINS } from "../lazy/pg-source";
 import { log } from "../util/log";
 import {
   PgoutputDecoder,
@@ -84,7 +84,10 @@ export class CdcSource {
   }
 
   private async doSetup(): Promise<void> {
-    const admin = new pg.Client({ connectionString: this.connectionString });
+    const admin = new pg.Client({
+      connectionString: this.connectionString,
+      ...KEEPALIVE
+    });
     await admin.connect();
     try {
       await admin.query(SESSION_PINS);
@@ -168,7 +171,7 @@ export class CdcSource {
 
   private connectStream(): void {
     const service = new LogicalReplicationService(
-      { connectionString: this.connectionString },
+      { connectionString: this.connectionString, ...KEEPALIVE },
       {
         acknowledge: { auto: true, timeoutSeconds: 0 },
         flowControl: { enabled: true }

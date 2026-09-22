@@ -43,6 +43,11 @@ export const SESSION_PINS =
   "SET datestyle = ISO; SET standard_conforming_strings = on; " +
   "SET TimeZone = 'UTC'; SET bytea_output = hex";
 
+export const KEEPALIVE = {
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10_000
+};
+
 class PinnedClient extends pg.Client {
   override connect(): Promise<pg.Client>;
   override connect(
@@ -68,6 +73,7 @@ class PinnedClient extends pg.Client {
 export function pinnedPool(config: pg.PoolConfig): pg.Pool {
   const pinned: pg.PoolConfig & { Client?: typeof pg.Client } = {
     ...config,
+    ...KEEPALIVE,
     types: walterTypes,
     Client: PinnedClient
   };
