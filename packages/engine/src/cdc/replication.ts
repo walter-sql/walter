@@ -48,6 +48,7 @@ export class CdcSource {
   private service?: LogicalReplicationService;
   private onTxn?: TxnHandler;
   private onSlot?: SlotHandler;
+  private watchdog?: NodeJS.Timeout;
   private prepared = false;
   private connected = false;
   private reconnecting = false;
@@ -66,7 +67,8 @@ export class CdcSource {
     private readonly connectionString: string,
     private readonly catalog: SchemaCatalog,
     private readonly tables?: readonly string[],
-    private readonly defaultSchema = "public"
+    private readonly defaultSchema = "public",
+    private readonly timing = { statusMs: 10_000, stallMs: 60_000 }
   ) {}
 
   async setup(): Promise<void> {
@@ -168,16 +170,25 @@ export class CdcSource {
     const service = new LogicalReplicationService(
       { connectionString: this.connectionString },
       {
-        acknowledge: { auto: true, timeoutSeconds: 10 },
+        acknowledge: { auto: true, timeoutSeconds: 0 },
         flowControl: { enabled: true }
       }
     );
     const slotName = `walter_${randomBytes(6).toString("hex")}`;
     this.service = service;
+    let applying = false;
     const plugin = new TempSlotPlugin(lsn => {
       this.lastActivity = Date.now();
       this.connected = true;
       log.info({ slot: slotName, lsn }, "replication slot created");
+      this.watchdog = setInterval(() => {
+        const silentMs = Date.now() - this.lastActivity;
+        if (!applying && silentMs > this.timing.stallMs) {
+          log.error({ silentMs }, "replication stream silent");
+          this.scheduleReconnect();
+        } else void service.acknowledge(service.lastLsn(), true);
+      }, this.timing.statusMs);
+      this.watchdog.unref?.();
       this.onSlot?.(lsn);
     });
 
@@ -225,7 +236,10 @@ export class CdcSource {
           if (truncated.length > 0) batch.truncated = truncated;
           ops = [];
           truncated = [];
+          applying = true;
           await this.onTxn?.(batch);
+          applying = false;
+          this.lastActivity = Date.now();
           break;
         }
       }
@@ -252,6 +266,7 @@ export class CdcSource {
     if (this.reconnecting || this.stopped) return;
     this.reconnecting = true;
     this.connected = false;
+    clearInterval(this.watchdog);
     setTimeout(async () => {
       try {
         await this.service?.stop();
@@ -266,6 +281,7 @@ export class CdcSource {
 
   async stop(): Promise<void> {
     this.stopped = true;
+    clearInterval(this.watchdog);
     await this.service?.stop();
   }
 

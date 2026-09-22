@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { connect, createServer, type AddressInfo } from "node:net";
+import type { AddressInfo } from "node:net";
 import type { WebSocketServer } from "ws";
 import pg from "pg";
 import { EngineClient } from "@walter-sql/client";
@@ -7,7 +7,7 @@ import type { ServerMessage } from "@walter-sql/view";
 import { WalterServer, type ServerHealth } from "../src/server/server";
 import { WalterEngine } from "../src/server/engine";
 import { ShapeRouter } from "../src/subscriptions/cluster";
-import { ownDatabase } from "./pg";
+import { ownDatabase, relay } from "./pg";
 
 const CONN = ownDatabase("health");
 
@@ -120,27 +120,11 @@ describe.skipIf(!CONN)("engine health wiring", () => {
   }, 30_000);
 
   it("boots with Postgres unreachable, holds subscriptions, heals", async () => {
-    const pgUrl = new URL(CONN!);
-    const relay = createServer(client => {
-      const upstream = connect(Number(pgUrl.port), pgUrl.hostname);
-      client.pipe(upstream).pipe(client);
-      client.on("error", () => upstream.destroy());
-      upstream.on("error", () => client.destroy());
-    });
-    let relayPort = 0;
-    const listen = () =>
-      new Promise<void>(r => relay.listen(relayPort, "127.0.0.1", r));
-    await listen();
-    relayPort = (relay.address() as AddressInfo).port;
-    await new Promise<void>(r => relay.close(() => r()));
-    const viaRelay = new URL(CONN!);
-    viaRelay.hostname = "127.0.0.1";
-    viaRelay.port = String(relayPort);
-
+    const link = await relay(CONN!, "down");
     const admin = new pg.Client({ connectionString: CONN });
     await admin.connect();
     await admin.query("CREATE TABLE boot_t (id int PRIMARY KEY)");
-    const engine = new WalterEngine({ pg: viaRelay.href, port: 0 });
+    const engine = new WalterEngine({ pg: link.url, port: 0 });
     let client: EngineClient | undefined;
     try {
       await engine.start();
@@ -156,7 +140,7 @@ describe.skipIf(!CONN)("engine health wiring", () => {
       expect(seen).toEqual([]);
       expect(await status("/ready")).toBe(503);
 
-      await listen();
+      link.set("up");
       await waitFor(async () => (await status("/ready")) === 200, "ready");
       await waitFor(async () => seen.length === 1, "snapshot");
       expect(seen[0]).toMatchObject({ type: "snapshot", rows: [] });
@@ -164,7 +148,7 @@ describe.skipIf(!CONN)("engine health wiring", () => {
       client?.close();
       await engine.stop();
       await admin.end();
-      await new Promise<void>(r => relay.close(() => r()));
+      await link.close();
     }
   }, 30_000);
 });

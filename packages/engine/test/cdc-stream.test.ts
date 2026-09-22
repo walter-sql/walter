@@ -4,16 +4,18 @@ import { CdcSource } from "../src/cdc/replication";
 import { SchemaCatalog } from "../src/parser/catalog";
 import type { TxnBatch } from "../src/cdc/types";
 import { parseLsn } from "../src/lazy/snapshot";
-import { ownDatabase, startCdc } from "./pg";
+import { ownDatabase, relay, startCdc } from "./pg";
 
 const CONN = ownDatabase("cdc_stream");
 const TABLE = "public.trunc_probe";
+
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 async function waitFor(cond: () => boolean, what: string): Promise<void> {
   const deadline = Date.now() + 10_000;
   while (!cond()) {
     if (Date.now() > deadline) throw new Error(`timed out waiting for ${what}`);
-    await new Promise(r => setTimeout(r, 25));
+    await sleep(25);
   }
 }
 
@@ -158,4 +160,59 @@ describe.skipIf(!CONN)("CdcSource stream loss", () => {
     await waitFor(() => slots === 2, "replacement slot");
     expect(cdc.degraded).toBe(false);
   }, 30_000);
+});
+
+describe.skipIf(!CONN)("CdcSource stream stall", () => {
+  const STALL_TABLE = "public.stall_probe";
+  let admin: pg.Client;
+  let link: Awaited<ReturnType<typeof relay>>;
+  let cdc: CdcSource;
+
+  beforeAll(async () => {
+    admin = new pg.Client({ connectionString: CONN });
+    await admin.connect();
+    await admin.query(`CREATE TABLE stall_probe (id int PRIMARY KEY)`);
+    link = await relay(CONN!);
+  });
+
+  afterAll(async () => {
+    await cdc?.stop();
+    await link?.close();
+    await admin?.query(`DROP TABLE IF EXISTS stall_probe`);
+    await admin?.end();
+  });
+
+  it("solicits replies, pauses while applying, and treats silence as loss", async () => {
+    cdc = new CdcSource(link.url, new SchemaCatalog(), undefined, "public", {
+      statusMs: 100,
+      stallMs: 500
+    });
+    await cdc.setup();
+    let slots = 0;
+    let release!: () => void;
+    const applied = new Promise<void>(r => (release = r));
+    cdc.start(
+      batch =>
+        batch.ops.some(op => op.table === STALL_TABLE) ? applied : undefined,
+      () => {
+        slots++;
+      }
+    );
+    await waitFor(() => slots === 1, "first slot");
+
+    await sleep(1500);
+    expect(slots).toBe(1);
+    expect(cdc.degraded).toBe(false);
+
+    await admin.query(`INSERT INTO stall_probe VALUES (1)`);
+    await sleep(1500);
+    expect(cdc.degraded).toBe(false);
+    release();
+
+    link.set("frozen");
+    await waitFor(() => cdc.degraded, "stall detected");
+    link.set("up");
+    await waitFor(() => slots === 2, "replacement slot");
+    expect(cdc.degraded).toBe(false);
+  }, 20_000);
 });
