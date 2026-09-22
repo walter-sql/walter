@@ -91,12 +91,12 @@ Press Ctrl+C to end the subscription and close the script.
 
 ## If the result does not appear
 
-| What you see                  | What to check                                                                                                                                 |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| No first output               | Check the engine log and `/ready`. Confirm `WALTER_URL` and, if configured, `WALTER_SECRET`. The client retries connection failures.          |
-| A table or column error       | Check the SQL, the table list, and the schema name. Restart Walter after schema changes.                                                      |
-| `unsupported_sql`             | Start with a single-table query and check [SQL support](/docs/sql-support/). A query can work in Postgres and still be unsupported by Walter. |
-| `failed`                      | The engine could not build or update this result. Read its log for the cause; it will retry.                                                  |
-| Rows appear but do not change | Commit the write, confirm that it affects this query, then check replication readiness.                                                       |
+| What you see                  | What to check                                                                                                                                        |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No first output               | Before Postgres first connects, subscriptions wait without error. Check `/ready`, the engine log, `WALTER_URL`, and, if configured, `WALTER_SECRET`. |
+| A table or column error       | Check the SQL, the table list, and the schema name. Restart Walter after schema changes.                                                             |
+| `unsupported_sql`             | Start with a single-table query and check [SQL support](/docs/sql-support/). A query can work in Postgres and still be unsupported by Walter.        |
+| `failed`                      | The engine could not build or update this result. Read its log for the cause; it will retry.                                                         |
+| Rows appear but do not change | Commit the write, confirm that it affects this query, then check replication readiness.                                                              |
 
 Once this works, [add the subscription to your app](/docs/your-app/). To try a complete application without adapting your own schema, the repository also includes an [auction demo](https://github.com/walter-sql/walter/tree/master/examples/demo).

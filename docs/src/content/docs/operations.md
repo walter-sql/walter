@@ -11,15 +11,15 @@ There are several connections in an application: Postgres to Walter, Walter to y
 
 ## What happens during an interruption
 
-| Event                                         | What the consumer sees                                                                        | Recovery                                                                                                                        |
-| --------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Engine restart or server-to-engine disconnect | Its last rows remain until the connection recovers.                                           | `EngineClient` reconnects and resubscribes. Each active subscription receives a snapshot.                                       |
-| Postgres replication disconnect               | Existing results can remain visible without new updates. `/ready` returns 503 on that engine. | Walter retries the replication connection, creates a new slot, and rebuilds maintained results.                                 |
-| Query evaluation fails                        | A `failed` message. View helpers keep the previous rows and mark the view failed.             | The engine retries the query, from one second up to a one-minute delay between attempts. A successful rebuild sends a snapshot. |
-| A published table is truncated                | Subscriptions using it receive replacement results.                                           | Walter rebuilds affected results.                                                                                               |
-| Browser-to-server disconnect                  | Depends on the transport and UI.                                                              | Your transport must reopen the subscription. The oRPC and SSE guides show this lifecycle.                                       |
+| Event                                         | What the consumer sees                                                            | Recovery                                                                                                                        |
+| --------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Engine restart or server-to-engine disconnect | Its last rows remain until the connection recovers.                               | `EngineClient` reconnects and resubscribes. Each active subscription receives a snapshot.                                       |
+| Postgres replication disconnect or timeout    | Results can remain visible without updates; `/ready` returns 503.                 | Walter reconnects with a new slot and rebuilds results.                                                                         |
+| Query evaluation fails                        | A `failed` message. View helpers keep the previous rows and mark the view failed. | The engine retries the query, from one second up to a one-minute delay between attempts. A successful rebuild sends a snapshot. |
+| A published table is truncated                | Subscriptions using it receive replacement results.                               | Walter rebuilds affected results.                                                                                               |
+| Browser-to-server disconnect                  | Depends on the transport and UI.                                                  | Your transport must reopen the subscription. The oRPC and SSE guides show this lifecycle.                                       |
 
-After the replication stream reconnects, `/ready` can return 200 while individual results are still rebuilding. Readiness does not wait for every result's snapshot.
+Row reads and connection attempts to a vanished Postgres host fail after about 20 seconds. The replication connection times out after about 60 seconds without a message, making `/ready` return 503.
 
 ## Query status and connection status
 
@@ -61,11 +61,11 @@ Coordinate application and engine versions for incompatible changes. Restarting 
 
 The engine serves these HTTP endpoints on its WebSocket port:
 
-| Endpoint       | Behavior                                                                                                                                                                  |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /live`    | HTTP 200 while the HTTP server is responding. It stays successful during replication loss.                                                                                |
-| `GET /ready`   | HTTP 200 when the local replication connection is established; HTTP 503 after a connection failure until it reconnects. A relay-only node has no local replication check. |
-| `GET /metrics` | Prometheus text metrics. Requires `Authorization: Bearer <secret>` when `WALTER_SECRET` is configured.                                                                    |
+| Endpoint       | Behavior                                                                                                                                                                             |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /live`    | HTTP 200 while the engine responds, even before Postgres connects or during replication loss.                                                                                        |
+| `GET /ready`   | HTTP 503 at startup or after connection loss, until a new replication slot exists; HTTP 200 otherwise, even while results rebuild. A relay-only node has no local replication check. |
+| `GET /metrics` | Prometheus text metrics. Requires `Authorization: Bearer <secret>` when `WALTER_SECRET` is configured.                                                                               |
 
 `/live` and `/ready` do not require the shared secret. Keep them on the same restricted network as the engine.
 
@@ -77,19 +77,19 @@ A ready relay does not prove that all of its owners are reachable. For a cluster
 
 These metrics help explain load and recovery:
 
-| Metric                                                   | Meaning                                                                                                                           |
-| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `walter_replication_connected`                           | Whether the local replication connection is established. Absent on relay-only nodes.                                              |
-| `walter_stream_activity_timestamp_seconds`               | Last replication activity, including heartbeats. This is not a measure of consumer freshness.                                     |
-| `walter_shapes`, `walter_shapes_failed`                  | Maintained query results and how many are failed.                                                                                 |
-| `walter_subscribers`                                     | Subscribers to locally maintained results, including subscriptions arriving from peers.                                           |
-| `walter_relay_shapes`, `walter_relay_subscribers`        | Results and subscribers served by relaying to owners.                                                                             |
-| `walter_working_set_rows`                                | Source rows retained by locally maintained queries. It is not a byte count or a count of unique database rows across all queries. |
-| `walter_backlog_ops`                                     | Queued change operations, counted for affected queries. Can be zero during a replication outage while results are stale.          |
-| `walter_send_queue_frames`, `walter_send_buffered_bytes` | Outgoing messages waiting to be sent.                                                                                             |
-| `walter_seeds_total`, `walter_seed_seconds_total`        | Successful initial result builds and their cumulative duration.                                                                   |
-| `walter_reseeds_total`                                   | Rebuilds requested after replication resets or truncation for results not already failed.                                         |
-| `process_resident_memory_bytes`                          | Process memory, including more than the source rows.                                                                              |
+| Metric                                                   | Meaning                                                                                                                                                |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `walter_replication_connected`                           | 1 once the replication slot exists; 0 during startup or recovery. Absent on relay-only nodes.                                                          |
+| `walter_stream_activity_timestamp_seconds`               | Last replication activity; updates at least every 10 seconds when healthy. Over a minute old indicates a problem. Does not measure consumer freshness. |
+| `walter_shapes`, `walter_shapes_failed`                  | Maintained query results and how many are failed.                                                                                                      |
+| `walter_subscribers`                                     | Subscribers to locally maintained results, including subscriptions arriving from peers.                                                                |
+| `walter_relay_shapes`, `walter_relay_subscribers`        | Results and subscribers served by relaying to owners.                                                                                                  |
+| `walter_working_set_rows`                                | Source rows retained by locally maintained queries. It is not a byte count or a count of unique database rows across all queries.                      |
+| `walter_backlog_ops`                                     | Queued change operations, counted for affected queries. Can be zero during a replication outage while results are stale.                               |
+| `walter_send_queue_frames`, `walter_send_buffered_bytes` | Outgoing messages waiting to be sent.                                                                                                                  |
+| `walter_seeds_total`, `walter_seed_seconds_total`        | Successful initial result builds and their cumulative duration.                                                                                        |
+| `walter_reseeds_total`                                   | Rebuilds requested after replication resets or truncation for results not already failed.                                                              |
+| `process_resident_memory_bytes`                          | Process memory, including more than the source rows.                                                                                                   |
 
 Walter writes structured JSON logs for startup, connection changes, query creation and failures, and recovery. Once a minute it logs a summary of runtime statistics. Query failure logs include the SQL, so apply your normal controls for access to server logs.
 

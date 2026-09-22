@@ -98,7 +98,7 @@ If you need to move an unavailable owner's queries, change the owner list and re
 
 The peer list is read at startup. Adding or removing an owner means deploying an updated list to all owners and relays.
 
-Bring new owners up before directing subscriptions to them. During a rollout, different peer lists can assign the same query to different owners and temporarily duplicate maintenance. Existing relay subscriptions do not migrate just because another node's configuration changed; restarting with the new list establishes the new routes.
+Wait for new owners' `/ready` to return 200 before directing subscriptions to them. During a rollout, different peer lists can assign the same query to different owners and temporarily duplicate maintenance. Existing relay subscriptions do not migrate just because another node's configuration changed; restarting with the new list establishes the new routes.
 
 Use a coordinated rollout and allow for reconnects, new snapshots, and temporary duplicate state. Keep query and schema changes compatible across the deployed versions. There is no live state-transfer or automatic membership-discovery protocol to configure.
 

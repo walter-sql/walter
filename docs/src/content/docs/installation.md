@@ -101,7 +101,7 @@ docker compose up -d walter
 
 The `raw` format preserves literal values, including `$` characters, as `docker run --env-file` does. It requires [Compose 2.30 or newer](https://docs.docker.com/reference/compose-file/services/#format).
 
-An application server in the same Compose project connects to `ws://walter:5544`. Use `docker compose up --wait walter` to wait for startup, or `condition: service_healthy` under an application service's `depends_on` to wait for Walter's built-in healthcheck. You can omit `ports` when no connections from the host are needed. If you are switching from the Docker command above, stop that container first to free the host port.
+An application server in the same Compose project connects to `ws://walter:5544`. `docker compose up --wait walter` and `depends_on` with `condition: service_healthy` wait for `/live`, which checks the engine process. Use `/ready` to check its Postgres connection. You can omit `ports` when no connections from the host are needed. If you are switching from the Docker command above, stop that container first to free the host port.
 
 Both Docker examples use `:latest`. Pin a tested image tag or digest in production. Walter needs no persistent volume for query state; it rebuilds active results from Postgres after a restart.
 
@@ -124,13 +124,13 @@ To embed the engine in an existing Node.js process, see the [programmatic API](/
 curl --fail http://127.0.0.1:5544/ready
 ```
 
-An HTTP 200 response means the replication connection is established. The response has no body. If startup fails, read the engine log for the database setting, permission, or table it could not use. With Docker, run `docker logs walter`; with Compose, run `docker compose logs walter`.
+`/ready` returns 200 with no body once the replication slot exists. While it returns 503, Walter stays up and retries every second. Check `docker logs walter` or `docker compose logs walter` for the cause. Walter recovers without a restart once it is fixed.
 
 Once the engine is ready, continue with [Your first live query](/docs/quickstart/). The [Configuration reference](/docs/configuration/) covers authentication, networking, optional settings, and how to apply changes.
 
 ## Generated columns and partitions
 
-Stored generated columns are available to subscriptions on Postgres 18, where Walter configures their publication. On earlier versions, they are not part of the columns Walter can serve. A published table with virtual generated columns is rejected at startup because those columns cannot be delivered through logical replication. You can use `WALTER_TABLES` to exclude such tables.
+Stored generated columns are available to subscriptions on Postgres 18, where Walter configures their publication. On earlier versions, they are not part of the columns Walter can serve. A published table with virtual generated columns prevents readiness because those columns cannot be delivered through logical replication. You can use `WALTER_TABLES` to exclude such tables.
 
 Partitioned tables are exposed through the published leaf partitions. Do not assume that querying a partitioned parent is interchangeable with querying those leaves in Walter. A publication using `publish_via_partition_root = true` is rejected. Verify the published relation names and test the queries you intend to use when evaluating a partitioned schema.
 
