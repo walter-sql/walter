@@ -1,7 +1,11 @@
 import pg from "pg";
 import { afterAll, beforeAll } from "vitest";
+import type { CdcSource, TxnHandler } from "../src/cdc/replication";
 
 export const TEST_PG = process.env.WALTER_TEST_PG;
+
+export const startCdc = (cdc: CdcSource, onTxn: TxnHandler) =>
+  new Promise<string>(slot => cdc.start(onTxn, slot));
 
 async function admin(sql: string): Promise<void> {
   const client = new pg.Client({ connectionString: TEST_PG });

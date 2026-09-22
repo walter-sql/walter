@@ -5,7 +5,7 @@ import { SchemaCatalog } from "../src/parser/catalog";
 import { PgRowSource, pinnedPool } from "../src/lazy/pg-source";
 import type { Expr } from "../src/parser/ir";
 import type { TxnBatch } from "../src/cdc/types";
-import { ownDatabase } from "./pg";
+import { ownDatabase, startCdc } from "./pg";
 
 const CONN = ownDatabase("cdc_setup");
 
@@ -218,12 +218,9 @@ describe.skipIf(!CONN)(
       const cdc = new CdcSource(dbUrl, new SchemaCatalog());
       const batches: TxnBatch[] = [];
       await cdc.setup();
-      await cdc.start(
-        b => {
-          batches.push(b);
-        },
-        () => {}
-      );
+      await startCdc(cdc, b => {
+        batches.push(b);
+      });
       try {
         await db.query(
           `INSERT INTO t VALUES (2, '2024-02-20', 'x', '2024-02-20 08:00:00.000042+00')`
@@ -315,12 +312,9 @@ describe.skipIf(!CONN)("CdcSource.setup() generated columns", () => {
       const seedKeys = Object.keys(seed.rows[0]!).sort();
       expect(seedKeys).toEqual(["id", "note", "price", "qty", "total"]);
 
-      await cdc.start(
-        b => {
-          batches.push(b);
-        },
-        () => {}
-      );
+      await startCdc(cdc, b => {
+        batches.push(b);
+      });
       await db.query(`UPDATE gen SET qty = 3 WHERE id = 1`);
       const op = () =>
         batches.flatMap(b => b.ops).find(o => o.kind === "update");
@@ -431,12 +425,9 @@ describe.skipIf(!CONN)("CdcSource.setup() table scoping", () => {
 
     const pool = pinnedPool({ connectionString: dbUrl, max: 2 });
     const batches: TxnBatch[] = [];
-    await cdc.start(
-      b => {
-        batches.push(b);
-      },
-      () => {}
-    );
+    await startCdc(cdc, b => {
+      batches.push(b);
+    });
     try {
       const src = new PgRowSource(pool, { defaultSchema: "public" });
       const seedA = await src.scopedRows('"x.y".c', undefined, []);

@@ -47,6 +47,10 @@ export class Stream {
     return new Promise(resolve => this.waiters.push({ target, resolve }));
   }
 
+  positioned(): Promise<void> {
+    return this.reached(1n);
+  }
+
   unseen(tables: readonly string[], applied: bigint): number[] {
     const xids: number[] = [];
     for (const [xid, txn] of this.pending) {

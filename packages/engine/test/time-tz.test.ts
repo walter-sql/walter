@@ -13,7 +13,7 @@ import { CdcSource } from "../src/cdc/replication";
 import { SchemaCatalog } from "../src/parser/catalog";
 import type { TxnBatch } from "../src/cdc/types";
 import { catalogOf } from "./support";
-import { ownDatabase } from "./pg";
+import { ownDatabase, startCdc } from "./pg";
 
 const CONN = ownDatabase("time_tz");
 const TABLE = "walter_tz_probe";
@@ -310,12 +310,9 @@ describe.skipIf(!CONN)("WAL rows carry canonical time text", () => {
     process.env.TZ = "America/New_York";
     cdc = new CdcSource(CONN!, new SchemaCatalog());
     await cdc.setup();
-    await cdc.start(
-      batch => {
-        batches.push(batch);
-      },
-      () => {}
-    );
+    await startCdc(cdc, batch => {
+      batches.push(batch);
+    });
   }, 30000);
 
   afterAll(async () => {

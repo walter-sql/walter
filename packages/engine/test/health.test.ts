@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
-import type { AddressInfo } from "node:net";
+import { connect, createServer, type AddressInfo } from "node:net";
 import type { WebSocketServer } from "ws";
 import pg from "pg";
+import { EngineClient } from "@walter-sql/client";
+import type { ServerMessage } from "@walter-sql/view";
 import { WalterServer, type ServerHealth } from "../src/server/server";
 import { WalterEngine } from "../src/server/engine";
 import { ShapeRouter } from "../src/subscriptions/cluster";
@@ -95,7 +97,7 @@ describe.skipIf(!CONN)("engine health wiring", () => {
       const status = async (path: string) => (await get(port, path)).status;
 
       expect(await status("/live")).toBe(200);
-      expect(await status("/ready")).toBe(200);
+      await waitFor(async () => (await status("/ready")) === 200, "ready");
       const metrics = await (await get(port, "/metrics")).text();
       expect(metrics).toContain("walter_replication_connected 1");
 
@@ -114,6 +116,55 @@ describe.skipIf(!CONN)("engine health wiring", () => {
     } finally {
       await engine.stop();
       await admin.end();
+    }
+  }, 30_000);
+
+  it("boots with Postgres unreachable, holds subscriptions, heals", async () => {
+    const pgUrl = new URL(CONN!);
+    const relay = createServer(client => {
+      const upstream = connect(Number(pgUrl.port), pgUrl.hostname);
+      client.pipe(upstream).pipe(client);
+      client.on("error", () => upstream.destroy());
+      upstream.on("error", () => client.destroy());
+    });
+    let relayPort = 0;
+    const listen = () =>
+      new Promise<void>(r => relay.listen(relayPort, "127.0.0.1", r));
+    await listen();
+    relayPort = (relay.address() as AddressInfo).port;
+    await new Promise<void>(r => relay.close(() => r()));
+    const viaRelay = new URL(CONN!);
+    viaRelay.hostname = "127.0.0.1";
+    viaRelay.port = String(relayPort);
+
+    const admin = new pg.Client({ connectionString: CONN });
+    await admin.connect();
+    await admin.query("CREATE TABLE boot_t (id int PRIMARY KEY)");
+    const engine = new WalterEngine({ pg: viaRelay.href, port: 0 });
+    let client: EngineClient | undefined;
+    try {
+      await engine.start();
+      const port = boundPort(engine.server);
+      const status = async (path: string) => (await get(port, path)).status;
+      expect(await status("/live")).toBe(200);
+      expect(await status("/ready")).toBe(503);
+
+      client = new EngineClient(`ws://127.0.0.1:${port}`);
+      const seen: ServerMessage[] = [];
+      client.subscribe({ sql: "SELECT id FROM boot_t" }, m => seen.push(m));
+      await new Promise(r => setTimeout(r, 1500));
+      expect(seen).toEqual([]);
+      expect(await status("/ready")).toBe(503);
+
+      await listen();
+      await waitFor(async () => (await status("/ready")) === 200, "ready");
+      await waitFor(async () => seen.length === 1, "snapshot");
+      expect(seen[0]).toMatchObject({ type: "snapshot", rows: [] });
+    } finally {
+      client?.close();
+      await engine.stop();
+      await admin.end();
+      await new Promise<void>(r => relay.close(() => r()));
     }
   }, 30_000);
 });

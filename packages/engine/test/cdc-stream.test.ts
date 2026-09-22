@@ -4,7 +4,7 @@ import { CdcSource } from "../src/cdc/replication";
 import { SchemaCatalog } from "../src/parser/catalog";
 import type { TxnBatch } from "../src/cdc/types";
 import { parseLsn } from "../src/lazy/snapshot";
-import { ownDatabase } from "./pg";
+import { ownDatabase, startCdc } from "./pg";
 
 const CONN = ownDatabase("cdc_stream");
 const TABLE = "public.trunc_probe";
@@ -31,12 +31,9 @@ describe.skipIf(!CONN)("CdcSource TRUNCATE decoding", () => {
     );
     cdc = new CdcSource(CONN!, new SchemaCatalog());
     await cdc.setup();
-    await cdc.start(
-      batch => {
-        batches.push(batch);
-      },
-      () => {}
-    );
+    await startCdc(cdc, batch => {
+      batches.push(batch);
+    });
   }, 30_000);
 
   afterAll(async () => {
@@ -94,21 +91,18 @@ describe.skipIf(!CONN)("CdcSource stream backpressure", () => {
     await client.query(`CREATE TABLE bp_probe (id int PRIMARY KEY)`);
     cdc = new CdcSource(CONN!, new SchemaCatalog());
     await cdc.setup();
-    await cdc.start(
-      async batch => {
-        inFlight++;
-        if (inFlight > 1) overlaps++;
-        const ids = batch.ops
-          .filter(op => op.table === BP_TABLE)
-          .map(op => (op.newRow as { id: number }).id);
-        if (ids.length > 0) {
-          await new Promise(r => setTimeout(r, 40));
-          seen.push(...ids);
-        }
-        inFlight--;
-      },
-      () => {}
-    );
+    await startCdc(cdc, async batch => {
+      inFlight++;
+      if (inFlight > 1) overlaps++;
+      const ids = batch.ops
+        .filter(op => op.table === BP_TABLE)
+        .map(op => (op.newRow as { id: number }).id);
+      if (ids.length > 0) {
+        await new Promise(r => setTimeout(r, 40));
+        seen.push(...ids);
+      }
+      inFlight--;
+    });
   }, 30_000);
 
   afterAll(async () => {
@@ -143,13 +137,14 @@ describe.skipIf(!CONN)("CdcSource stream loss", () => {
     await cdc.setup();
 
     let slots = 0;
-    await cdc.start(
+    expect(cdc.degraded).toBe(true);
+    cdc.start(
       () => {},
       () => {
         slots++;
       }
     );
-    expect(slots).toBe(1);
+    await waitFor(() => slots === 1, "first slot");
     expect(cdc.degraded).toBe(false);
 
     const pid = (

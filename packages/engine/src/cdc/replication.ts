@@ -48,18 +48,18 @@ export class CdcSource {
   private service?: LogicalReplicationService;
   private onTxn?: TxnHandler;
   private onSlot?: SlotHandler;
-  private settleStart?: (lsn: string | undefined) => void;
+  private prepared = false;
+  private connected = false;
   private reconnecting = false;
   private stopped = false;
-  private lost = false;
   private lastActivity = 0;
 
   get degraded(): boolean {
-    return this.lost;
+    return !this.connected;
   }
 
   get stats() {
-    return { connected: !this.lost, lastActivity: this.lastActivity };
+    return { connected: this.connected, lastActivity: this.lastActivity };
   }
 
   constructor(
@@ -70,6 +70,7 @@ export class CdcSource {
   ) {}
 
   async setup(): Promise<void> {
+    if (this.prepared) return;
     try {
       await this.doSetup();
     } catch (e) {
@@ -77,6 +78,7 @@ export class CdcSource {
       if (code !== "42710" && code !== "42704" && code !== "23505") throw e;
       await this.doSetup();
     }
+    this.prepared = true;
   }
 
   private async doSetup(): Promise<void> {
@@ -146,28 +148,23 @@ export class CdcSource {
     }
   }
 
-  async start(
-    onTxn: TxnHandler,
-    onSlot: SlotHandler
-  ): Promise<string | undefined> {
+  start(onTxn: TxnHandler, onSlot: SlotHandler): void {
     this.onTxn = onTxn;
-    return new Promise(resolve => {
-      this.settleStart = resolve;
-      this.onSlot = lsn => {
-        this.lost = false;
-        onSlot(lsn);
-        this.settle(lsn);
-      };
-      void this.connectStream();
-    });
+    this.onSlot = onSlot;
+    void this.connect();
   }
 
-  private settle(lsn: string | undefined): void {
-    this.settleStart?.(lsn);
-    this.settleStart = undefined;
+  private async connect(): Promise<void> {
+    try {
+      await this.setup();
+    } catch (err) {
+      log.error({ err }, "postgres setup failed");
+      return this.scheduleReconnect();
+    }
+    if (!this.stopped) this.connectStream();
   }
 
-  private async connectStream(): Promise<void> {
+  private connectStream(): void {
     const service = new LogicalReplicationService(
       { connectionString: this.connectionString },
       {
@@ -179,6 +176,7 @@ export class CdcSource {
     this.service = service;
     const plugin = new TempSlotPlugin(lsn => {
       this.lastActivity = Date.now();
+      this.connected = true;
       log.info({ slot: slotName, lsn }, "replication slot created");
       this.onSlot?.(lsn);
     });
@@ -253,19 +251,15 @@ export class CdcSource {
   private scheduleReconnect(): void {
     if (this.reconnecting || this.stopped) return;
     this.reconnecting = true;
-    this.lost = true;
-    this.settle(undefined);
+    this.connected = false;
     setTimeout(async () => {
       try {
         await this.service?.stop();
       } catch {}
       this.reconnecting = false;
       if (!this.stopped) {
-        log.warn("replication stream lost; reconnecting with a fresh slot");
-        await this.connectStream().catch(e => {
-          log.error({ err: e as Error }, "replication reconnect failed");
-          this.scheduleReconnect();
-        });
+        log.warn("reconnecting to postgres");
+        void this.connect();
       }
     }, 1000);
   }

@@ -103,11 +103,11 @@ export class WalterEngine {
   }
 
   async start(): Promise<void> {
-    let lsn: string | undefined;
+    await this.server.listen();
+    log.info({ url: this.server.url }, "listening");
     if (this.cdc) {
       await initParser();
-      await this.cdc.setup();
-      lsn = await this.cdc.start(
+      this.cdc.start(
         batch => this.manager!.handleTxn(batch),
         slot => {
           this.stream.advance(parseLsn(slot));
@@ -115,8 +115,6 @@ export class WalterEngine {
         }
       );
     }
-    await this.server.listen();
-    log.info({ url: this.server.url, lsn }, "listening");
 
     this.pulse = setInterval(() => log.info(this.stats, "pulse"), 60_000);
     this.pulse.unref?.();

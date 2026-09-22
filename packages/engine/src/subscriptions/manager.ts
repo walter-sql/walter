@@ -91,6 +91,7 @@ export class SubscriptionManager {
     sub: ViewSubscriber,
     req: ShapeRequest
   ): Promise<ShapeRuntime> {
+    await this.stream?.positioned();
     const shape = await this.getOrCreate(req);
     this.grace.cancel(shape.fingerprint);
     await shape.seeded;

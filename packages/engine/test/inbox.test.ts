@@ -106,6 +106,7 @@ describe("per-shape inbox", () => {
   it("an initial load folds in the transactions its reads already covered", async () => {
     const { catalog } = await setup();
     const stream = new Stream();
+    stream.advance(1n);
     stream.issue = async () => 10n;
     const source = new MemRowSource(
       () => [],
