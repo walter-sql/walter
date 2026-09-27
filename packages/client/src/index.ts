@@ -1,3 +1,3 @@
 export * from "./engine-client";
-export * from "./sse";
+export type { SseOptions } from "./sse";
 export * from "@walter-sql/view";

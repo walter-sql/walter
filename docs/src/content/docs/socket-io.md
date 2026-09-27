@@ -56,10 +56,9 @@ export function attachTasks(
     active.set(id, controller);
 
     try {
-      for await (const message of walter.stream(
-        myTasks(user.id),
-        controller.signal
-      )) {
+      for await (const message of walter.stream(myTasks(user.id), {
+        signal: controller.signal
+      })) {
         if (controller.signal.aborted) break;
         await socket.timeout(10_000).emitWithAck("tasks:view", id, message);
       }
@@ -100,43 +99,46 @@ import type { TaskEvents } from "../shared/task-events";
 import { socket } from "./io";
 
 export function taskStream(signal?: AbortSignal) {
-  return subscriptionStream<Task>(sink => {
-    let id: string | undefined;
-    const subscribe = () => {
-      id = crypto.randomUUID();
-      socket.emit("tasks:subscribe", id);
-    };
-    const disconnected = () => {
-      id = undefined;
-    };
-    const receive: TaskEvents["tasks:view"] = (
-      messageId,
-      message,
-      acknowledge
-    ) => {
-      if (!id || messageId !== id) return;
-      sink.next(message);
-      acknowledge(true);
-    };
-    const failed = (messageId: string) => {
-      if (id && messageId === id)
-        sink.error(new Error("Could not open the task list"));
-    };
+  return subscriptionStream<Task>(
+    sink => {
+      let id: string | undefined;
+      const subscribe = () => {
+        id = crypto.randomUUID();
+        socket.emit("tasks:subscribe", id);
+      };
+      const disconnected = () => {
+        id = undefined;
+      };
+      const receive: TaskEvents["tasks:view"] = (
+        messageId,
+        message,
+        acknowledge
+      ) => {
+        if (!id || messageId !== id) return;
+        sink.next(message);
+        acknowledge(true);
+      };
+      const failed = (messageId: string) => {
+        if (id && messageId === id)
+          sink.error(new Error("Could not open the task list"));
+      };
 
-    socket.on("connect", subscribe);
-    socket.on("disconnect", disconnected);
-    socket.on("tasks:view", receive);
-    socket.on("tasks:error", failed);
-    if (socket.connected) subscribe();
+      socket.on("connect", subscribe);
+      socket.on("disconnect", disconnected);
+      socket.on("tasks:view", receive);
+      socket.on("tasks:error", failed);
+      if (socket.connected) subscribe();
 
-    return () => {
-      socket.off("connect", subscribe);
-      socket.off("disconnect", disconnected);
-      socket.off("tasks:view", receive);
-      socket.off("tasks:error", failed);
-      if (id && socket.connected) socket.emit("tasks:unsubscribe", id);
-    };
-  }, signal);
+      return () => {
+        socket.off("connect", subscribe);
+        socket.off("disconnect", disconnected);
+        socket.off("tasks:view", receive);
+        socket.off("tasks:error", failed);
+        if (id && socket.connected) socket.emit("tasks:unsubscribe", id);
+      };
+    },
+    { signal }
+  );
 }
 ```
 

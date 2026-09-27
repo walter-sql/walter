@@ -19,7 +19,7 @@ import { walter } from "./walter";
 import { myTasks } from "./tasks";
 
 export const tasks = authed.subscription(async function* ({ ctx, signal }) {
-  yield* walter.stream(myTasks(ctx.user.id), signal);
+  yield* walter.stream(myTasks(ctx.user.id), { signal });
 });
 ```
 
@@ -43,7 +43,7 @@ export function taskStream(signal?: AbortSignal) {
         onError: sink.error,
         onComplete: sink.complete
       }).unsubscribe,
-    signal
+    { signal }
   );
 }
 ```

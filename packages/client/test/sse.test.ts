@@ -3,14 +3,12 @@ import { createServer, type Server, type ServerResponse } from "node:http";
 import { once } from "node:events";
 import type { AddressInfo } from "node:net";
 import {
-  sseResponse,
   subscriptionStream,
-  writeSSE,
   WalterError,
-  type MessageSource,
   type Sink,
   type ViewMessage
 } from "../src";
+import { pipeSSE, sseResponse, type MessageSource } from "../src/sse";
 
 const snapshot: ViewMessage = { type: "snapshot", shapeId: "s", rows: [] };
 const diff: ViewMessage = { type: "diff", shapeId: "s", changes: [] };
@@ -20,10 +18,13 @@ function feed() {
   let signal: AbortSignal | undefined;
   const source: MessageSource = s => {
     signal = s;
-    return subscriptionStream(next => {
-      sink = next;
-      return () => {};
-    }, s);
+    return subscriptionStream(
+      next => {
+        sink = next;
+        return () => {};
+      },
+      { signal: s }
+    );
   };
   return {
     source,
@@ -96,7 +97,7 @@ type Serve = (
 ) => Promise<void>;
 
 const forms: Record<string, Serve> = {
-  writeSSE: (res, source, heartbeat) => writeSSE(res, source, { heartbeat }),
+  pipeSSE: (res, source, heartbeat) => pipeSSE(res, source, { heartbeat }),
   sseResponse: async (res, source, heartbeat) => {
     const { status, headers, body } = sseResponse(source, { heartbeat });
     res.writeHead(status, Object.fromEntries(headers));

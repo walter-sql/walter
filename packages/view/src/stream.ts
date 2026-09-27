@@ -25,11 +25,15 @@ export interface Sink<T> {
   complete(): void;
 }
 
+export interface StreamOptions {
+  signal?: AbortSignal;
+}
+
 const MAX_BACKLOG = 1_000;
 
 export function subscriptionStream<TRow extends RowValue = RowValue>(
   subscribe: (sink: Sink<ViewMessage<TRow>>) => () => void,
-  signal?: AbortSignal
+  { signal }: StreamOptions = {}
 ): AsyncIterable<ViewMessage<TRow>> {
   const queue: ViewMessage<TRow>[] = [];
   let wake: (() => void) | null = null;

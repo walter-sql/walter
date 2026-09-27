@@ -42,25 +42,25 @@ const auth = {
 
 const auctions = {
   board: pub.handler(async function* ({ signal }) {
-    yield* walter.stream(shapes.board(), signal);
+    yield* walter.stream(shapes.board(), { signal });
   }),
 
   detail: pub
     .input(z.object({ auctionId: z.uuid() }))
     .handler(async function* ({ input, signal }) {
-      yield* walter.stream(shapes.detail(input.auctionId), signal);
+      yield* walter.stream(shapes.detail(input.auctionId), { signal });
     }),
 
   ticker: pub.handler(async function* ({ signal }) {
-    yield* walter.stream(shapes.ticker(), signal);
+    yield* walter.stream(shapes.ticker(), { signal });
   }),
 
   leaderboard: pub.handler(async function* ({ signal }) {
-    yield* walter.stream(shapes.leaderboard(), signal);
+    yield* walter.stream(shapes.leaderboard(), { signal });
   }),
 
   myBids: authed.handler(async function* ({ context, signal }) {
-    yield* walter.stream(shapes.myBids(context.user.id), signal);
+    yield* walter.stream(shapes.myBids(context.user.id), { signal });
   }),
 
   create: authed

@@ -56,10 +56,9 @@ export function attachTasks(socket: WebSocket, user: { id: number }) {
     active.set(id, controller);
 
     try {
-      for await (const message of walter.stream(
-        myTasks(user.id),
-        controller.signal
-      )) {
+      for await (const message of walter.stream(myTasks(user.id), {
+        signal: controller.signal
+      })) {
         if (controller.signal.aborted) break;
         await send({ type: "tasks:view", id, message });
       }
@@ -111,37 +110,41 @@ import type { TaskEvent, TaskRequest } from "../shared/task-messages";
 import { socket } from "./socket";
 
 export function taskStream(signal?: AbortSignal) {
-  return subscriptionStream<Task>(sink => {
-    let id: string | undefined;
-    const send = (request: TaskRequest) => socket.send(JSON.stringify(request));
-    const subscribe = () => {
-      id = crypto.randomUUID();
-      send({ type: "tasks:subscribe", id });
-    };
-    const disconnected = () => {
-      id = undefined;
-    };
-    const receive = (event: MessageEvent) => {
-      const message = JSON.parse(event.data) as TaskEvent;
-      if (!id || message.id !== id) return;
-      if (message.type === "tasks:view") sink.next(message.message);
-      if (message.type === "tasks:error")
-        sink.error(new Error("Could not open the task list"));
-    };
+  return subscriptionStream<Task>(
+    sink => {
+      let id: string | undefined;
+      const send = (request: TaskRequest) =>
+        socket.send(JSON.stringify(request));
+      const subscribe = () => {
+        id = crypto.randomUUID();
+        send({ type: "tasks:subscribe", id });
+      };
+      const disconnected = () => {
+        id = undefined;
+      };
+      const receive = (event: MessageEvent) => {
+        const message = JSON.parse(event.data) as TaskEvent;
+        if (!id || message.id !== id) return;
+        if (message.type === "tasks:view") sink.next(message.message);
+        if (message.type === "tasks:error")
+          sink.error(new Error("Could not open the task list"));
+      };
 
-    socket.addEventListener("open", subscribe);
-    socket.addEventListener("close", disconnected);
-    socket.addEventListener("message", receive);
-    if (socket.readyState === 1) subscribe();
+      socket.addEventListener("open", subscribe);
+      socket.addEventListener("close", disconnected);
+      socket.addEventListener("message", receive);
+      if (socket.readyState === 1) subscribe();
 
-    return () => {
-      socket.removeEventListener("open", subscribe);
-      socket.removeEventListener("close", disconnected);
-      socket.removeEventListener("message", receive);
-      if (id && socket.readyState === 1)
-        send({ type: "tasks:unsubscribe", id });
-    };
-  }, signal);
+      return () => {
+        socket.removeEventListener("open", subscribe);
+        socket.removeEventListener("close", disconnected);
+        socket.removeEventListener("message", receive);
+        if (id && socket.readyState === 1)
+          send({ type: "tasks:unsubscribe", id });
+      };
+    },
+    { signal }
+  );
 }
 ```
 

@@ -20,7 +20,7 @@ import { myTasks } from "./tasks";
 
 export const tasks = {
   list: authed.handler(async function* ({ context, signal }) {
-    yield* walter.stream(myTasks(context.user.id), signal);
+    yield* walter.stream(myTasks(context.user.id), { signal });
   })
 };
 ```

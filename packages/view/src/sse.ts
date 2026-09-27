@@ -1,10 +1,10 @@
 import { WalterError } from "./error";
-import { subscriptionStream } from "./stream";
+import { subscriptionStream, type StreamOptions } from "./stream";
 import type { RowValue, ServerMessage, ViewMessage } from "./protocol";
 
 export function sseStream<TRow extends RowValue = RowValue>(
   url: string | URL,
-  signal?: AbortSignal
+  options?: StreamOptions
 ): AsyncIterable<ViewMessage<TRow>> {
   return subscriptionStream<TRow>(sink => {
     const source = new EventSource(url);
@@ -21,5 +21,5 @@ export function sseStream<TRow extends RowValue = RowValue>(
       if (source.readyState === EventSource.CLOSED) fail("closed");
     };
     return () => source.close();
-  }, signal);
+  }, options);
 }

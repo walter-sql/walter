@@ -61,7 +61,7 @@ Inside your handler, use the verified session's user and the request's abort sig
 import { walter } from "./walter";
 import { myTasks } from "./tasks";
 
-const messages = walter.stream(myTasks(user.id), signal);
+const messages = walter.stream(myTasks(user.id), { signal });
 ```
 
 Forward these messages through your API. The [framework recipes](/docs/integrations/) connect this stream to each transport and cancel it when the consumer leaves. They reuse `walter`, `myTasks`, and `Task` above.

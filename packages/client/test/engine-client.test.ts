@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { WebSocketServer, type WebSocket } from "ws";
-import { getEventListeners } from "node:events";
+import { getEventListeners, once } from "node:events";
+import { createServer, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import {
   EngineClient,
@@ -23,16 +24,19 @@ const plain: Responder = (socket, shapeId) =>
 function fakeEngine(port = 0, respond: Responder = plain) {
   const wss = new WebSocketServer({ port, host: "127.0.0.1" });
   let subscribes = 0;
+  let unsubscribes = 0;
   wss.on("connection", socket => {
     socket.on("message", data => {
       const msg = JSON.parse(String(data));
       if (msg.type === "subscribe") respond(socket, msg.shapeId, ++subscribes);
+      if (msg.type === "unsubscribe") unsubscribes++;
     });
   });
   return {
     wss,
     port: () => (wss.address() as AddressInfo).port,
     subscribes: () => subscribes,
+    unsubscribes: () => unsubscribes,
     ready: new Promise<void>(r => wss.on("listening", () => r())),
     stop: () =>
       new Promise<void>(r => {
@@ -78,6 +82,22 @@ async function connect(respond?: Responder) {
   return { server, client };
 }
 
+async function serve(handler: (res: ServerResponse) => Promise<void>) {
+  const server = createServer((_, res) => void handler(res));
+  cleanups.push(() => {
+    server.closeAllConnections();
+    return new Promise<void>(r => server.close(() => r()));
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+}
+
+const firstFrame = async (reader: ReadableStreamDefaultReader<Uint8Array>) => {
+  const { value } = await race(reader.read());
+  return JSON.parse(new TextDecoder().decode(value).slice("data: ".length));
+};
+
 describe("EngineClient lifecycle", () => {
   it("close() ends active streams", async () => {
     const { client } = await connect();
@@ -116,14 +136,18 @@ describe("EngineClient lifecycle", () => {
     const { client } = await connect();
     const controller = new AbortController();
 
-    for await (const msg of client.stream(SHAPE, controller.signal)) {
+    for await (const msg of client.stream(SHAPE, {
+      signal: controller.signal
+    })) {
       expect(msg.type).toBe("snapshot");
       break;
     }
     expect(getEventListeners(controller.signal, "abort")).toHaveLength(0);
 
     const consumed = (async () => {
-      for await (const _ of client.stream(SHAPE, controller.signal));
+      for await (const _ of client.stream(SHAPE, {
+        signal: controller.signal
+      }));
     })();
     controller.abort();
     await race(consumed);
@@ -196,5 +220,34 @@ describe("EngineClient answers", () => {
       expect(msg).toMatchObject({ type: "snapshot", rows: [{ id: 2 }] });
       break;
     }
+  });
+});
+
+describe("EngineClient over SSE", () => {
+  it("response() frames the shape's messages and unsubscribes when the body is cancelled", async () => {
+    const { server, client } = await connect();
+    const response = client.response(SHAPE);
+    expect(response.headers.get("content-type")).toBe("text/event-stream");
+    const reader = response.body!.getReader();
+    expect(await firstFrame(reader)).toMatchObject({
+      type: "snapshot",
+      rows: [{ id: 1 }]
+    });
+    await reader.cancel();
+    await until(() => server.unsubscribes() === 1);
+  });
+
+  it("pipe() writes the shape's messages to a Node response and unsubscribes when the client leaves", async () => {
+    const { server, client } = await connect();
+    const url = await serve(res => client.pipe(SHAPE, res));
+    const controller = new AbortController();
+    const response = await fetch(url, { signal: controller.signal });
+    expect(response.headers.get("content-type")).toBe("text/event-stream");
+    expect(await firstFrame(response.body!.getReader())).toMatchObject({
+      type: "snapshot",
+      rows: [{ id: 1 }]
+    });
+    controller.abort();
+    await until(() => server.unsubscribes() === 1);
   });
 });

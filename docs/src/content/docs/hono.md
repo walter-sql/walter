@@ -11,18 +11,17 @@ Use Hono 4 on Node.js with the [shared client and query](/docs/your-app/). Here,
 ## Add the route
 
 ```ts
-import { sseResponse } from "@walter-sql/client";
 import { walter } from "./walter";
 import { myTasks } from "./tasks";
 
 app.get("/api/tasks/live", requireUser, c =>
-  sseResponse(signal => walter.stream(myTasks(c.get("user").id), signal), {
+  walter.response(myTasks(c.get("user").id), {
     signal: c.req.raw.signal
   })
 );
 ```
 
-`sseResponse` handles event framing and heartbeats. Pass the request's signal to cancel the subscription when the client disconnects.
+`walter.response` handles event framing and heartbeats. Pass the request's signal to cancel the subscription when the client disconnects.
 
 For edge deployments, keep `EngineClient` in a Node service and call it from the edge handler.
 

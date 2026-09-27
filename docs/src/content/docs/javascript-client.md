@@ -1,6 +1,6 @@
 ---
 title: JavaScript API
-description: Reference for EngineClient, view reducers, subscription and SSE helpers, and TanStack Query adapters.
+description: Reference for EngineClient, view reducers, stream adapters, and TanStack Query adapters.
 section: Reference
 order: 4
 ---
@@ -47,12 +47,16 @@ Options:
 ### stream
 
 ```ts
-walter.stream(shape, signal?): AsyncIterable<ViewMessage<TRow>>
+walter.stream(shape, options?: StreamOptions): AsyncIterable<ViewMessage<TRow>>
+
+interface StreamOptions {
+  signal?: AbortSignal;
+}
 ```
 
 Opens a subscription and returns its view messages: `snapshot`, `diff`, and `failed`. A query rejection throws a `WalterError` during iteration.
 
-Pass an `AbortSignal` to end the subscription when a request closes. Ending the loop with `break` also cleans it up. The subscription opens when `stream` is called, so consume the returned iterable or cancel it; do not create streams and leave them unused.
+`StreamOptions` is exported from `@walter-sql/view`. Pass `{ signal }` to end the subscription when a request closes. Ending the loop with `break` also cleans it up. The subscription opens when `stream` is called, so consume the returned iterable or cancel it; do not create streams and leave them unused.
 
 The stream has a bounded message queue. If a consumer falls behind far enough to fill it, the client discards the backlog and resubscribes for a new snapshot. Consumers must treat every snapshot as a replacement result.
 
@@ -66,7 +70,41 @@ Returns the rows from the first snapshot, then unsubscribes. It rejects if the q
 
 This creates a subscription internally. The engine may retain its state for the grace period after this call returns. There is no separate direct-to-Postgres query path in this method.
 
-`snapshot` has no signal argument. If you need cancellation or an application timeout, call `snapshot` from the view package with `walter.stream(shape, signal)`.
+`snapshot` has no signal argument. If you need cancellation or an application timeout, call `snapshot` from the view package with `walter.stream(shape, { signal })`.
+
+### response and pipe
+
+```ts
+walter.response(shape, options?: SseOptions): Response
+walter.pipe(shape, res: ServerResponse, options?: SseOptions): Promise<void>
+
+interface SseOptions extends StreamOptions {
+  heartbeat?: number;
+}
+```
+
+`SseOptions` is exported from `@walter-sql/client`. `response` returns a standard `Response` synchronously, without waiting for the first query result. `pipe` writes to a Node `ServerResponse` with backpressure and resolves when the response ends. Both use HTTP 200 and send JSON data events with these headers:
+
+| Header              | Value                    |
+| ------------------- | ------------------------ |
+| `Content-Type`      | `text/event-stream`      |
+| `Cache-Control`     | `no-cache, no-transform` |
+| `X-Accel-Buffering` | `no`                     |
+
+The subscription ends when the Node response closes, the `Response` body is cancelled, or `options.signal` aborts. In Fetch-style handlers, pass `{ signal: request.signal }`.
+
+Each message is sent as `data: <json>` followed by a blank line. If the stream throws, one final error frame is sent before the response ends:
+
+```text
+data: {"type":"error","code":"parse_error"}
+
+```
+
+The frame contains only a code, with no error text or cause. A `WalterError` preserves its code; another thrown error becomes `internal`. Query rejections are handled in the stream and do not reach framework HTTP error handlers. Authentication failures can still return an HTTP error before calling either method. A `failed` view remains an ordinary data event.
+
+`heartbeat` is the interval in milliseconds between SSE comment frames, defaulting to `15_000`. Heartbeats run while waiting for the first result as well as between updates, and are skipped under backpressure. They do not create new subscriptions. Choose a positive interval suitable for your proxy's idle timeout.
+
+See [Node HTTP and SSE](/docs/other-stacks/) for browser consumption and [proxy configuration](/docs/other-stacks/#proxy-configuration).
 
 ### subscribe
 
@@ -172,7 +210,7 @@ These exports come from `@walter-sql/view` and are also re-exported by the clien
 ```ts
 function subscriptionStream<TRow extends RowValue = RowValue>(
   subscribe: (sink: Sink<ViewMessage<TRow>>) => () => void,
-  signal?: AbortSignal
+  options?: StreamOptions
 ): AsyncIterable<ViewMessage<TRow>>;
 ```
 
@@ -205,7 +243,7 @@ Exported from `@walter-sql/view`, and re-exported by the client and TanStack Que
 ```ts
 function sseStream<TRow extends RowValue = RowValue>(
   url: string | URL,
-  signal?: AbortSignal
+  options?: StreamOptions
 ): AsyncIterable<ViewMessage<TRow>>;
 ```
 
@@ -216,50 +254,6 @@ The connection opens immediately. Abort or end iteration to close it. Temporary 
 An error frame such as `{"type":"error","code":"parse_error"}` closes the event connection and throws a `WalterError` with that code. It does not reconnect. A refused HTTP response or another terminal `EventSource` failure throws `closed`. A caller such as TanStack Query may separately retry by opening a new stream.
 
 This helper uses `subscriptionStream`, including its queue limit and fresh-subscription behavior. It sends same-origin cookies through the browser's native API. It has no custom-header or cross-origin credential options and does not expose connection-status events.
-
-### writeSSE and sseResponse
-
-Exported from `@walter-sql/client`:
-
-```ts
-function writeSSE(
-  res: ServerResponse,
-  source: MessageSource,
-  options?: SseOptions
-): Promise<void>;
-
-function sseResponse(source: MessageSource, options?: SseOptions): Response;
-
-type MessageSource = (signal: AbortSignal) => AsyncIterable<ViewMessage>;
-
-interface SseOptions {
-  heartbeat?: number;
-  signal?: AbortSignal;
-}
-```
-
-`writeSSE` writes to a Node `ServerResponse` with backpressure. `sseResponse` returns a standard `Response` synchronously, without waiting for the first query result. Both use HTTP 200 and send JSON data events with these headers:
-
-| Header              | Value                    |
-| ------------------- | ------------------------ |
-| `Content-Type`      | `text/event-stream`      |
-| `Cache-Control`     | `no-cache, no-transform` |
-| `X-Accel-Buffering` | `no`                     |
-
-`source` receives the helper's abort signal. Pass it to `walter.stream(shape, signal)` so closing the Node response or cancelling the standard response body releases the subscription. In Fetch-style handlers, also pass `{ signal: request.signal }` in the options; this covers a request that ends before the handler returns.
-
-Each message is sent as `data: <json>` followed by a blank line. If the source throws, the helper sends one final error frame and ends the stream:
-
-```text
-data: {"type":"error","code":"parse_error"}
-
-```
-
-The frame contains only a code, with no error text or cause. A `WalterError` preserves its code; another thrown error becomes `internal`. Query rejections are handled in the stream and do not reach framework HTTP error handlers. Authentication failures can still return an HTTP error before a helper is called. A `failed` view remains an ordinary data event.
-
-`heartbeat` is the interval in milliseconds between SSE comment frames, defaulting to `15_000`. Heartbeats run while waiting for the first result as well as between updates, and are skipped under backpressure. They do not create new subscriptions. Choose a positive interval suitable for your proxy's idle timeout.
-
-See [Node HTTP and SSE](/docs/other-stacks/) for browser consumption and [proxy configuration](/docs/other-stacks/#proxy-configuration).
 
 ## TanStack Query helpers
 
@@ -281,7 +275,7 @@ Use an async iterable from [oRPC](/docs/orpc-tanstack/), a [tRPC subscription](/
 
 Construct one with `new WalterError("closed")`. The optional second argument accepts standard `ErrorOptions`, including `{ cause: originalError }`.
 
-For errors thrown by `walter.stream`, `cause` contains the engine's diagnostic on the server. The SSE helpers send only the code, and `sseStream` reconstructs the safe message in the browser.
+For errors thrown by `walter.stream`, `cause` contains the engine's diagnostic on the server. `response` and `pipe` send only the code, and `sseStream` reconstructs the safe message in the browser.
 
 | Code              | Meaning                                                                                                                              |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ |

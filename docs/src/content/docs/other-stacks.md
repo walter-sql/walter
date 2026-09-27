@@ -13,15 +13,14 @@ Use SSE for server-to-browser updates, with writes through your existing API. Th
 In your existing Node HTTP handler, authenticate the request before opening the stream:
 
 ```ts
-import { writeSSE } from "@walter-sql/client";
 import { walter } from "./walter";
 import { myTasks } from "./tasks";
 
 // Inside your authenticated GET /api/tasks/live handler:
-await writeSSE(res, signal => walter.stream(myTasks(user.id), signal));
+await walter.pipe(myTasks(user.id), res);
 ```
 
-The helper handles event framing, backpressure, heartbeats, and cancellation. See [Express](/docs/express/), [Fastify](/docs/fastify/), or [Hono](/docs/hono/) for a framework route; the latter two use `sseResponse` to return a standard `Response`.
+`walter.pipe` handles event framing, backpressure, heartbeats, and cancellation. See [Express](/docs/express/), [Fastify](/docs/fastify/), or [Hono](/docs/hono/) for a framework route; the latter two use `walter.response` to return a standard `Response`.
 
 ## Receive the events
 
@@ -32,7 +31,9 @@ import { materialize, sseStream } from "@walter-sql/view";
 import type { Task } from "../server/tasks";
 
 const controller = new AbortController();
-const messages = sseStream<Task>("/api/tasks/live", controller.signal);
+const messages = sseStream<Task>("/api/tasks/live", {
+  signal: controller.signal
+});
 
 try {
   for await (const view of materialize(messages)) {
@@ -57,7 +58,7 @@ import type { Task } from "../server/tasks";
 
 export const taskOptions = liveQueryOptions({
   queryKey: ["tasks"],
-  queryFn: ({ signal }) => sseStream<Task>("/api/tasks/live", signal)
+  queryFn: ({ signal }) => sseStream<Task>("/api/tasks/live", { signal })
 });
 ```
 
@@ -67,4 +68,4 @@ The query data is `Task[]`. TanStack Query supplies cancellation and its retry p
 
 Allow unbuffered, long-lived responses, with an idle timeout longer than the heartbeat interval (15 seconds by default). Serverless request-duration limits may require periodic reconnects or different hosting.
 
-The [SSE reference](/docs/javascript-client/#server-sent-events) covers options, headers, and error frames.
+The [SSE reference](/docs/javascript-client/#response-and-pipe) covers options, headers, and error frames.

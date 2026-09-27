@@ -1,13 +1,16 @@
 import type { ServerResponse } from "node:http";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { WalterError, type ViewMessage } from "@walter-sql/view";
+import {
+  WalterError,
+  type StreamOptions,
+  type ViewMessage
+} from "@walter-sql/view";
 
 export type MessageSource = (signal: AbortSignal) => AsyncIterable<ViewMessage>;
 
-export interface SseOptions {
+export interface SseOptions extends StreamOptions {
   heartbeat?: number;
-  signal?: AbortSignal;
 }
 
 type Frame = ViewMessage | { type: "error"; code: WalterError["code"] };
@@ -74,7 +77,7 @@ export function sseResponse(
   return new Response(sseBody(source, options), { headers: HEADERS });
 }
 
-export async function writeSSE(
+export async function pipeSSE(
   res: ServerResponse,
   source: MessageSource,
   options?: SseOptions

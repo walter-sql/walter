@@ -65,4 +65,4 @@ The engine rejects WebSocket handshakes with an `Origin` header. That blocks ord
 
 Postgres row-level security is not a per-user authorization system for Walter subscriptions. There is no per-request user context in the engine's database sessions. Logical replication also has its own [security behavior](https://www.postgresql.org/docs/18/logical-replication-security.html); do not assume that the policies used by your application's database connections will filter each live result for its caller.
 
-Rejected queries throw a `WalterError`. Its `message` is a fixed, client-safe explanation; the engine's diagnostic is in `cause` on the server. Keep that cause in server logs. The SSE helpers send only the error code. A `failed` view message contains no diagnostic text and can be forwarded with the other view messages.
+Rejected queries throw a `WalterError`. Its `message` is a fixed, client-safe explanation; the engine's diagnostic is in `cause` on the server. Keep that cause in server logs. `response` and `pipe` send only the error code. A `failed` view message contains no diagnostic text and can be forwarded with the other view messages.

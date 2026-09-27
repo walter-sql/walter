@@ -18,7 +18,7 @@ Start with the shared [client and query](/docs/your-app/), then choose your stac
 | [WebSocket / ws](/docs/websocket/) | Independent subscriptions on a shared application socket.        |
 | [Socket.IO](/docs/socket-io/)      | Typed events, acknowledgements, and automatic reconnects.        |
 | [tRPC](/docs/trpc/)                | A typed subscription over SSE or WebSocket, with TanStack Query. |
-| [Node HTTP](/docs/other-stacks/)   | SSE server helpers and a shared browser-consumption guide.       |
+| [Node HTTP](/docs/other-stacks/)   | An SSE handler and a shared browser-consumption guide.           |
 
 For a full-stack TypeScript app, oRPC and tRPC carry the declared row type through to the browser. Both support HTTP and WebSocket. Keep your existing framework if you already use one.
 

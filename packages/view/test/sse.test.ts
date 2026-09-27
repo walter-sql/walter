@@ -68,7 +68,7 @@ describe("sseStream", () => {
 
   it("abort closes the source", async () => {
     const controller = new AbortController();
-    const stream = sseStream("/live", controller.signal);
+    const stream = sseStream("/live", { signal: controller.signal });
     const consumed = (async () => {
       for await (const _ of stream);
     })();

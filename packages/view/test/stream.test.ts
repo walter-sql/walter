@@ -32,10 +32,13 @@ describe("subscriptionStream", () => {
   function source(signal?: AbortSignal) {
     const sinks: Sink<ViewMessage>[] = [];
     let unsubscribed = 0;
-    const stream = subscriptionStream(sink => {
-      sinks.push(sink);
-      return () => unsubscribed++;
-    }, signal);
+    const stream = subscriptionStream(
+      sink => {
+        sinks.push(sink);
+        return () => unsubscribed++;
+      },
+      { signal }
+    );
     return {
       stream,
       sink: () => sinks.at(-1)!,

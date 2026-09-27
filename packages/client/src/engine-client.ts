@@ -1,11 +1,13 @@
-import type { IncomingMessage } from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import { ReconnectingWebSocket } from "./reconnecting-ws";
+import { pipeSSE, sseResponse, type SseOptions } from "./sse";
 import { WalterError, snapshot, subscriptionStream } from "@walter-sql/view";
 import type {
   ClientMessage,
   RowValue,
   ServerMessage,
   Sink,
+  StreamOptions,
   ViewMessage
 } from "@walter-sql/view";
 
@@ -86,7 +88,7 @@ export class EngineClient {
 
   stream<TRow extends RowValue = RowValue>(
     shape: EngineShape<TRow>,
-    signal?: AbortSignal
+    options?: StreamOptions
   ): AsyncIterable<ViewMessage<TRow>> {
     return subscriptionStream<TRow>(sink => {
       if (this.closed) {
@@ -103,13 +105,25 @@ export class EngineClient {
         this.sinks.delete(sink);
         off();
       };
-    }, signal);
+    }, options);
   }
 
   snapshot<TRow extends RowValue = RowValue>(
     shape: EngineShape<TRow>
   ): Promise<TRow[]> {
     return snapshot(this.stream(shape));
+  }
+
+  response(shape: EngineShape, options?: SseOptions): Response {
+    return sseResponse(signal => this.stream(shape, { signal }), options);
+  }
+
+  pipe(
+    shape: EngineShape,
+    res: ServerResponse,
+    options?: SseOptions
+  ): Promise<void> {
+    return pipeSSE(res, signal => this.stream(shape, { signal }), options);
   }
 
   get status(): ConnectionStatus {
