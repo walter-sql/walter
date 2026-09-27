@@ -28,7 +28,7 @@ const fonts = [sourceSans, plexMono];
       <link rel="preload" as="font" type="font/woff2" href={href} crossorigin />
     ))}
     <link rel="sitemap" href="/sitemap-index.xml" />
-    <meta name="theme-color" content="#fafbf9" />
+    <meta name="theme-color" content="#fafaf9" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Walter" />
     <meta property="og:title" content={title} />
@@ -56,8 +56,8 @@ const fonts = [sourceSans, plexMono];
               : "light";
         document.querySelector('meta[name="theme-color"]').content =
           document.documentElement.dataset.theme === "dark"
-            ? "#111412"
-            : "#fafbf9";
+            ? "#151615"
+            : "#fafaf9";
       })();
     </script>
     <slot name="head" />

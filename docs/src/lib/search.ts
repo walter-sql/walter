@@ -29,15 +29,18 @@ function excerptFor(doc: SearchDocument, terms: string[]): string {
   const start = Math.min(
     ...terms.map(term => body.indexOf(term)).filter(index => index >= 0)
   );
-  if (!Number.isFinite(start)) return doc.description;
-  const from = Math.max(
-    0,
-    doc.body.lastIndexOf(" ", Math.max(0, start - 65)) + 1
-  );
+  if (!Number.isFinite(start) && doc.description) return doc.description;
+  const from = Number.isFinite(start)
+    ? Math.max(0, doc.body.lastIndexOf(" ", Math.max(0, start - 65)) + 1)
+    : 0;
   const limit = from + 200;
   const boundary = doc.body.lastIndexOf(" ", limit);
   const to =
-    limit < doc.body.length && boundary > start ? boundary : doc.body.length;
+    limit < doc.body.length
+      ? boundary > from
+        ? boundary
+        : limit
+      : doc.body.length;
   return `${from > 0 ? "…" : ""}${doc.body.slice(from, to).trim()}${to < doc.body.length ? "…" : ""}`;
 }
 
@@ -48,6 +51,7 @@ export function searchDocuments(
   const terms = queryTerms(query);
   if (!terms.length) return [];
   const phrase = normalize(query.trim());
+  const seenPages = new Set<string>();
   return docs
     .map(doc => {
       const title = normalize(doc.title);
@@ -59,13 +63,20 @@ export function searchDocuments(
         if (title.includes(term)) score += 24;
         else if (description.includes(term)) score += 10;
         else if (section.includes(term)) score += 5;
-        else if (body.includes(term)) score += 1;
+        else if (body.includes(term))
+          score += Math.min(5, body.split(term).length - 1);
         else return { doc, score: 0 };
       }
       return { doc, score };
     })
     .filter(result => result.score > 0)
     .sort((a, b) => b.score - a.score)
+    .filter(({ doc }) => {
+      const page = doc.url.split("#")[0];
+      if (seenPages.has(page)) return false;
+      seenPages.add(page);
+      return true;
+    })
     .slice(0, 8)
     .map(({ doc }) => ({ ...doc, excerpt: excerptFor(doc, terms) }));
 }

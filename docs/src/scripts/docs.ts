@@ -88,9 +88,15 @@ export function initializeDocs() {
           "--header-height"
         )
       ) || 72;
+    const barHeight =
+      document.querySelector(".docs-mobile-bar")?.getBoundingClientRect()
+        .height ?? 0;
     let active = 0;
     tocTargets.forEach((target, index) => {
-      if (target && target.getBoundingClientRect().top <= headerHeight + 48)
+      if (
+        target &&
+        target.getBoundingClientRect().top <= headerHeight + barHeight + 48
+      )
         active = index;
     });
     tocLinks.forEach((link, index) => {

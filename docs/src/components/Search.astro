@@ -427,6 +427,9 @@ const quickLinks = [
     if (link)
       select([...results.querySelectorAll(".search-result")].indexOf(link));
   });
+  results.addEventListener("click", event => {
+    if ((event.target as Element).closest("a")) dialog.close();
+  });
   retry.addEventListener("click", () => {
     loadIndex();
     render();
@@ -569,10 +572,8 @@ const quickLinks = [
   .search-caption {
     margin: 8px 12px 11px;
     color: var(--faint);
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font-size: 13px;
+    font-weight: 600;
   }
   .search-results {
     list-style: none;
@@ -612,19 +613,19 @@ const quickLinks = [
   }
   .search-results :global(.search-result-heading) {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
-    gap: 12px;
+    gap: 2px 12px;
   }
   .search-results :global(strong) {
     color: var(--ink);
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1.5;
     font-weight: 550;
   }
   .search-results :global(.search-result-section) {
     color: var(--faint);
-    font-size: 10px;
-    white-space: nowrap;
+    font-size: 12px;
   }
   .search-results :global(.search-result-excerpt) {
     display: -webkit-box;
@@ -633,7 +634,7 @@ const quickLinks = [
     overflow: hidden;
     margin-top: 3px;
     color: var(--muted);
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.6;
     overflow-wrap: anywhere;
   }

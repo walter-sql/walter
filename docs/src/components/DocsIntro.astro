@@ -7,7 +7,7 @@ const { showWrites = false } = Astro.props;
 ---
 
 <figure
-  class="docs-topology"
+  class="docs-diagram docs-topology"
   aria-label={`Data flows from Postgres through Walter to your server, which authorizes and forwards live results to your app.${showWrites ? " Writes go directly from your server to Postgres." : ""}`}
 >
   <figcaption>
@@ -113,28 +113,6 @@ const { showWrites = false } = Astro.props;
 </figure>
 
 <style>
-  .docs-topology {
-    margin: 3px 0 30px;
-    padding: 18px 22px 21px;
-    border: 1px solid var(--hairline);
-    border-radius: 7px;
-    background: var(--surface);
-  }
-  figcaption {
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 23px;
-    color: var(--muted);
-    font-size: 11px;
-    line-height: 1.5;
-  }
-  figcaption > :first-child {
-    font-family: var(--mono);
-    font-size: 9px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-  }
   .topology-nodes {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -148,14 +126,29 @@ const { showWrites = false } = Astro.props;
   .topology-node:not(:last-child)::before {
     content: "";
     position: absolute;
-    top: 22px;
-    left: calc(50% + 27px);
-    width: calc(100% - 54px);
+    top: 18px;
+    left: calc(50% + 23px);
+    right: calc(-50% + 23px);
     height: 1px;
     background: var(--hairline-strong);
   }
+  .topology-node:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 16px;
+    right: calc(-50% + 23px);
+    width: 5px;
+    height: 5px;
+    border-top: 1px solid var(--hairline-strong);
+    border-right: 1px solid var(--hairline-strong);
+    transform: rotate(45deg);
+  }
   .topology-icon {
     color: var(--muted);
+  }
+  .topology-icon svg {
+    width: 36px;
+    height: 36px;
   }
   .topology-engine .topology-icon {
     color: var(--ink);
@@ -163,26 +156,27 @@ const { showWrites = false } = Astro.props;
   .topology-name {
     margin-top: 11px;
     color: var(--ink);
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.4;
     font-weight: 550;
   }
   .topology-detail {
     margin-top: 3px;
     color: var(--muted);
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.5;
+    text-align: center;
   }
   .topology-writes {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-top: 20px;
-    padding-top: 15px;
+    margin-top: 16px;
+    padding-top: 12px;
     border-top: 1px solid var(--hairline);
     color: var(--muted);
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.5;
   }
   .topology-writes > :last-child {
@@ -192,29 +186,21 @@ const { showWrites = false } = Astro.props;
     color: var(--ink);
   }
   @media (max-width: 480px) {
-    .docs-topology {
-      padding: 15px 10px 18px;
-      margin-bottom: 25px;
-    }
-    figcaption {
-      padding-inline: 5px;
-      margin-bottom: 20px;
-      font-size: 10px;
-    }
     .topology-icon svg {
-      width: 35px;
-      height: 35px;
+      width: 32px;
+      height: 32px;
     }
     .topology-node:not(:last-child)::before {
-      top: 17px;
+      top: 16px;
       left: calc(50% + 21px);
-      width: calc(100% - 42px);
+      right: calc(-50% + 21px);
+    }
+    .topology-node:not(:last-child)::after {
+      top: 14px;
+      right: calc(-50% + 21px);
     }
     .topology-name {
-      font-size: 11px;
-    }
-    .topology-detail {
-      font-size: 9px;
+      font-size: 12px;
     }
   }
 </style>

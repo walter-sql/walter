@@ -1,4 +1,4 @@
-<figure class="scaling-diagram" aria-labelledby="scaling-caption">
+<figure class="docs-diagram scaling-diagram" aria-labelledby="scaling-caption">
   <figcaption id="scaling-caption">
     <span>Cluster topology</span>
     <span>Two owners with a relay layer</span>
@@ -47,7 +47,6 @@
           <strong>Owner {name}</strong>
         </div>
         <span>Maintains assigned queries</span>
-        <span class="node-tag">Connected to Postgres</span>
       </div>
     ))}
   </div>
@@ -78,7 +77,6 @@
           <strong>Relay {name}</strong>
         </div>
         <span>Serves results from either owner</span>
-        <span class="node-tag">No database connection</span>
       </div>
     ))}
   </div>
@@ -90,39 +88,24 @@
   </div>
   <div class="entry-node">
     <span class="load-balancer">Load balancer</span>
-    <span class="entry-link" aria-hidden="true">
-      ↓
-    </span>
+    <svg
+      class="entry-link"
+      width="16"
+      height="20"
+      viewBox="0 0 16 20"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1"
+      aria-hidden="true"
+    >
+      <path d="M8 1v17m-4-4 4 4 4-4" />
+    </svg>
     <strong>Your application servers</strong>
     <span>Authenticate users and stream results to your apps</span>
   </div>
-  <p class="diagram-note">
-    Owners distribute query maintenance. Relays distribute delivery.
-  </p>
 </figure>
 
 <style>
-  .scaling-diagram {
-    margin: 3px 0 30px;
-    padding: 20px 22px 18px;
-    border: 1px solid var(--hairline);
-    border-radius: 7px;
-    background: var(--surface);
-  }
-  figcaption {
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 26px;
-    color: var(--muted);
-    font-size: 11px;
-    line-height: 1.5;
-  }
-  figcaption > :first-child {
-    font: 9px var(--mono);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
   .database-node {
     display: flex;
     align-items: center;
@@ -143,7 +126,7 @@
   .entry-node > span:last-child {
     display: block;
     color: var(--muted);
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.5;
   }
   .connector {
@@ -164,25 +147,25 @@
     stroke: var(--muted);
   }
   .split {
-    height: 32px;
-    margin-top: 12px;
+    height: 24px;
+    margin-top: 8px;
   }
   .connection-label {
-    margin: 0 0 12px;
+    margin: 0 0 10px;
     text-align: center;
     color: var(--muted);
-    font-size: 10px;
+    font-size: 12px;
   }
   .node-pair {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 24px;
+    gap: 16px;
   }
   .node {
     text-align: center;
     border: 1px solid var(--hairline-strong);
     border-radius: 5px;
-    padding: 14px 8px 12px;
+    padding: 12px 8px;
     background: var(--bg);
   }
   .node-title {
@@ -190,33 +173,24 @@
     align-items: center;
     justify-content: center;
     gap: 9px;
-    margin-bottom: 8px;
-  }
-  .owner .node-title svg {
-    color: var(--primary);
-  }
-  .node > .node-tag {
-    margin-top: 10px;
-    padding-top: 9px;
-    border-top: 1px solid var(--hairline);
-    font-size: 10px;
+    margin-bottom: 5px;
   }
   .mesh {
-    height: 58px;
+    height: 44px;
   }
   .mesh > span {
     position: absolute;
-    top: 29px;
+    top: 22px;
     left: 50%;
     transform: translateX(-50%);
     white-space: nowrap;
     padding: 0 9px;
     color: var(--muted);
     background: var(--surface);
-    font-size: 10px;
+    font-size: 12px;
   }
   .merge {
-    height: 38px;
+    height: 28px;
   }
   .entry-node {
     display: flex;
@@ -229,30 +203,13 @@
     border: 1px solid var(--hairline-strong);
     border-radius: 4px;
     background: var(--bg);
-    font-size: 11px;
+    font-size: 12px;
   }
   .entry-link {
-    padding: 3px 0;
+    margin: 4px 0;
     color: var(--muted);
-    font-size: 14px;
-  }
-  .diagram-note {
-    margin-top: 22px;
-    padding-top: 13px;
-    border-top: 1px solid var(--hairline);
-    color: var(--muted);
-    font-size: 11px;
-    text-align: center;
-    line-height: 1.5;
   }
   @media (max-width: 480px) {
-    .scaling-diagram {
-      padding: 16px 12px;
-    }
-    figcaption {
-      gap: 8px;
-      font-size: 10px;
-    }
     .node-pair {
       gap: 14px;
     }
@@ -264,12 +221,6 @@
     }
     strong {
       font-size: 13px;
-    }
-    .node > span {
-      font-size: 10px;
-    }
-    .node > .node-tag {
-      font-size: 9px;
     }
   }
 </style>

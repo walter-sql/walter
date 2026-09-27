@@ -62,6 +62,7 @@ const jsonLd = JSON.stringify({
       </svg>
       <span>Documentation</span>
     </button>
+    <span class="docs-bar-title">{doc.data.title}</span>
     {toc.length > 0 && (
       <details class="docs-mobile-toc">
         <summary>
@@ -78,7 +79,7 @@ const jsonLd = JSON.stringify({
             <path d="m4 6 4 4 4-4" />
           </svg>
         </summary>
-        <nav aria-label="On this page, mobile">
+        <nav aria-label="On this page">
           {toc.map(heading => (
             <a
               href={`#${heading.slug}`}
@@ -247,34 +248,8 @@ const jsonLd = JSON.stringify({
       )}
       <div class="docs-resources">
         <span>Resources</span>
-        <a href="/llms.txt">
-          LLM context{" "}
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.4"
-            aria-hidden="true"
-          >
-            <path d="M4 12 12 4M4 4h8v8" />
-          </svg>
-        </a>
-        <a href="/llms-full.txt">
-          Full docs (.txt){" "}
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.4"
-            aria-hidden="true"
-          >
-            <path d="M4 12 12 4M4 4h8v8" />
-          </svg>
-        </a>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/llms-full.txt">Full docs (.txt)</a>
       </div>
     </aside>
   </div>

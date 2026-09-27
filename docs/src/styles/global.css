@@ -3,17 +3,18 @@
 @import "@fontsource/ibm-plex-mono/latin-500.css";
 
 :root {
-  --bg: #fafbf9;
-  --surface: #f1f3f0;
+  --bg: #fafaf9;
+  --surface: #f1f1ef;
   --surface-raised: #ffffff;
-  --ink: #202521;
-  --muted: #616a63;
-  --faint: #69726b;
-  --hairline: #e0e5df;
-  --hairline-strong: #c7cfc7;
+  --ink: #242624;
+  --body: #424541;
+  --muted: #626660;
+  --faint: #6f736c;
+  --hairline: #dedfdb;
+  --hairline-strong: #c7cac3;
   --primary: #176f57;
-  --primary-wash: #eef2ee;
-  --code-bg: #f2f4f1;
+  --primary-wash: #eeefeb;
+  --code-bg: #f3f3f1;
   --sans: "Source Sans 3 Variable", "Source Sans 3", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
   --header-height: 72px;
@@ -21,17 +22,18 @@
 }
 
 [data-theme="dark"] {
-  --bg: #111412;
-  --surface: #181c19;
-  --surface-raised: #1d221e;
-  --ink: #edf0eb;
-  --muted: #a3ada4;
-  --faint: #849087;
-  --hairline: #2a312b;
-  --hairline-strong: #3c473e;
-  --primary: #82d6b4;
-  --primary-wash: #1b251f;
-  --code-bg: #171b18;
+  --bg: #151615;
+  --surface: #1d1e1c;
+  --surface-raised: #252623;
+  --ink: #eeefeb;
+  --body: #c9ccc5;
+  --muted: #a5aaa0;
+  --faint: #92988c;
+  --hairline: #333630;
+  --hairline-strong: #4a4f44;
+  --primary: #8fcbb1;
+  --primary-wash: #242820;
+  --code-bg: #1b1d19;
   color-scheme: dark;
 }
 
@@ -212,8 +214,8 @@ a svg {
   background: var(--code-bg) !important;
   border: 1px solid var(--hairline);
   border-radius: 6px;
-  font-size: 12.5px;
-  line-height: 1.9;
+  font-size: 13px;
+  line-height: 1.75;
   padding: 22px 24px;
   overflow-x: auto;
   tab-size: 2;
@@ -256,7 +258,7 @@ a svg {
 }
 .prose p,
 .prose li {
-  color: var(--muted);
+  color: var(--body);
 }
 .prose strong {
   color: var(--ink);
@@ -295,7 +297,7 @@ a svg {
   background: var(--code-bg);
   border: 1px solid var(--hairline);
   border-radius: 4px;
-  font-size: 0.77em;
+  font-size: 0.8em;
   padding: 0.13em 0.35em;
   overflow-wrap: anywhere;
 }
@@ -309,7 +311,7 @@ a svg {
 }
 .prose table {
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.6;
   display: block;
   max-width: 100%;
@@ -322,7 +324,7 @@ a svg {
   background: var(--surface);
 }
 .prose td {
-  color: var(--muted);
+  color: var(--body);
 }
 .prose th,
 .prose td {
@@ -345,7 +347,7 @@ main:focus {
   }
   .astro-code {
     padding: 18px;
-    font-size: 12px;
+    font-size: 12.5px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

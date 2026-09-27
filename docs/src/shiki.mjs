@@ -39,21 +39,21 @@ const palette = (name, type, colors) => ({
 
 export const shikiThemes = {
   light: palette("walter-light", "light", {
-    ink: "#364339",
-    background: "#f2f4f1",
-    comment: "#718075",
+    ink: "#343b33",
+    background: "#f3f3f1",
+    comment: "#626d61",
     keyword: "#266552",
-    punctuation: "#738076",
+    punctuation: "#657062",
     string: "#72592e",
     constant: "#7e5445",
     entity: "#234b3b"
   }),
   dark: palette("walter-dark", "dark", {
-    ink: "#cbd4cb",
-    background: "#171b18",
-    comment: "#86928a",
+    ink: "#d3d8ce",
+    background: "#1b1d19",
+    comment: "#969f8f",
     keyword: "#95c9ac",
-    punctuation: "#859187",
+    punctuation: "#a0a898",
     string: "#c8b996",
     constant: "#ceb2a1",
     entity: "#e2e8dc"
