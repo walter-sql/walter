@@ -9,7 +9,7 @@ export type CollectionOp<TRow extends RowValue = RowValue> =
   | { op: "reorder"; moves: OrderMove[] };
 
 export type ElementOp =
-  | { op: "set"; field: string; value: unknown }
+  | { op: "set"; field: string; value: any }
   | { op: "nest"; field: string; ops: CollectionOp[] }
   | { op: "patch"; field: string; ops: ElementOp[] };
 

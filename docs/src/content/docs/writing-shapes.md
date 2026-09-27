@@ -2,7 +2,7 @@
 title: Queries and parameters
 description: Write a subscription query, bind values, choose result columns, and understand how subscriptions are shared.
 section: Build your app
-order: 3
+order: 4
 ---
 
 A Walter subscription is defined by one `SELECT` statement and its parameter values. The API calls this pair a **shape**. There is no separate schema or subscription language to define.
@@ -80,6 +80,12 @@ LIMIT 20
 ```
 
 The JSON rows have a `createdAt` field. Unquoted identifiers follow Postgres's usual lowercase rules.
+
+## Organize queries with shape factories
+
+Keep related queries and their row types in a server module, with a named function for each query. Each function accepts inputs and returns a shape. Authentication and subscription cleanup stay in the calling handler.
+
+The [typed task factory](/docs/your-app/#define-a-query-next-to-its-row-type) shows this optional convention. The auction demo's [shape module](https://github.com/walter-sql/walter/blob/master/examples/demo/server/src/shapes.ts) uses it for the board, auction details, and a user's bids, with an `EngineShape<Row>` return type on each factory.
 
 ## Change a subscription
 

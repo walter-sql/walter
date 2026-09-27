@@ -25,10 +25,10 @@ export function liveQueryFn<
     for await (const view of materialize(await queryFn(context))) {
       rows = view.rows;
       if (view.status === "failed")
-        query.setState({ status: "error", error: WalterError.failed() });
+        query.setState({ status: "error", error: new WalterError("failed") });
       else client.setQueryData<TRow[]>(queryKey, rows);
     }
-    if (!context.signal.aborted) throw WalterError.closed();
+    if (!context.signal.aborted) throw new WalterError("closed");
     return rows;
   };
 }

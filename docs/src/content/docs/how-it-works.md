@@ -1,13 +1,12 @@
 ---
 title: How Walter works
-description: Follow a query from its first result through database changes, nested updates, and recovery.
+description: Walter maintains a query result in memory, updates it from committed Postgres changes, and sends snapshots and diffs to subscribers.
 section: Background
 order: 1
+diagram: subscription
 ---
 
-Consider a screen showing unfinished tasks and their comments. The screen needs an initial result, then updates when someone edits a task, completes it, or adds a comment.
-
-Walter maintains that query's result in memory. This page follows what happens from the first subscription onward. You can use Walter without knowing the implementation details, but they help explain its database load and recovery behavior.
+This page follows a task query from its first subscription through updates and recovery. These details explain the engine's database load and memory use.
 
 ## Reading the first result
 
@@ -37,7 +36,7 @@ The amount of work depends on the query. Editing a shared user's name may affect
 
 A task and its comments have separate result lists inside the engine. The condition `comments.task_id = tasks.id` tells Walter which comment list belongs to each task.
 
-When a comment's body changes, Walter can send an update for that comment inside the task's `comments` array. Your app's view helper applies it in place within the result structure. If the comment no longer matches the query, it is removed instead.
+When a comment's body changes, Walter can send an update for that comment inside the task's `comments` array. Your app's view helper updates that nested result. If the comment no longer matches the query, it is removed instead.
 
 Each nested list has its own filter, order, and limit. “Twenty tasks with ten comments each” therefore has a limit for the tasks and a separate limit for every task's comments.
 

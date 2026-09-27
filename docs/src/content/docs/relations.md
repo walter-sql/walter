@@ -2,7 +2,7 @@
 title: Joins and nested results
 description: Return related rows as columns, objects, or arrays, with examples of the resulting JSON.
 section: Build your app
-order: 4
+order: 5
 ---
 
 A query can return related data in the form your screen needs. Use a join for additional columns, a JSON object for one related row, and a JSON aggregate for a collection of related rows.

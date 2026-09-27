@@ -2,7 +2,7 @@
 title: Ordering and pagination
 description: Keep ordered lists live, choose a stable order, and understand what happens as rows move between pages.
 section: Build your app
-order: 5
+order: 6
 ---
 
 A live result can change both its contents and its order. If your query asks for the twenty latest tasks, a new task can enter at the top and push another task out of the result.

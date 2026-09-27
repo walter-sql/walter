@@ -10,6 +10,6 @@ npm install @walter-sql/tanstack-query
 
 Requires `@tanstack/query-core` >=5, provided by your TanStack Query adapter. All exports from `@walter-sql/view` are included; no separate install is needed.
 
-**[Documentation: oRPC and TanStack Query](https://walter.ax/docs/orpc-tanstack/)**
+**[Documentation: TanStack Query helpers](https://walter.ax/docs/javascript-client/#tanstack-query-helpers)** · [Framework integrations](https://walter.ax/docs/integrations/)
 
 Apache-2.0

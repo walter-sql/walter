@@ -1,100 +1,52 @@
 ---
-title: oRPC and TanStack Query
-description: Connect an authenticated oRPC subscription to a React task list with TanStack Query.
+title: oRPC
+description: Add a typed Walter stream to your existing oRPC router and keep TanStack Query current.
 section: Build your app
-order: 6
+order: 3.1
+parent: integrations
 ---
 
-This guide connects a server subscription to a React task list. oRPC carries the messages from the server, and the Walter TanStack Query helpers keep the cached rows up to date.
+For an existing oRPC 1.x and TanStack Query 5 app, reuse the [shared client and query](/docs/your-app/). The declared row type carries through to the browser.
 
-It uses `myTasks` and the shared `walter` client from [Add live data to your app](/docs/your-app/). The examples assume sibling `server` and `browser` directories so the browser can import server types. In a monorepo, use your existing type-only package exports instead.
+## Add a procedure
 
-## Install the packages
-
-In the server project:
-
-```bash
-npm install @walter-sql/client @orpc/server
-```
-
-In the React project:
-
-```bash
-npm install @walter-sql/tanstack-query @orpc/client @orpc/tanstack-query @tanstack/react-query
-```
-
-The browser example also imports the `RouterClient` type from `@orpc/server`. Make that package available to its TypeScript build; it is a type-only import.
-
-## Define an authenticated procedure
-
-The server's request context contains a user resolved by your existing authentication code. The procedure checks that user and uses their ID to choose the task result.
+Add `tasks` to your router. Here, `authed` is your existing procedure that supplies the authenticated `context.user`:
 
 ```ts
-// server/router.ts
-import { ORPCError, os } from "@orpc/server";
+// server/task-router.ts
+import { authed } from "./orpc";
 import { walter } from "./walter";
 import { myTasks } from "./tasks";
 
-export type Context = {
-  user: { id: number } | null;
-};
-
-const authed = os.$context<Context>().use(({ context, next }) => {
-  if (!context.user) throw new ORPCError("UNAUTHORIZED");
-  return next({ context: { user: context.user } });
-});
-
-export const router = {
-  tasks: {
-    list: authed.handler(async function* ({ context, signal }) {
-      yield* walter.stream(myTasks(context.user.id), signal);
-    })
-  }
+export const tasks = {
+  list: authed.handler(async function* ({ context, signal }) {
+    yield* walter.stream(myTasks(context.user.id), signal);
+  })
 };
 ```
 
-Passing `signal` to `stream` connects request cancellation to the Walter subscription. When the request ends, the subscription can be released.
+Passing `signal` cancels the Walter subscription when the request ends.
 
-## Mount the router
+## Use the procedure in a query
 
-This Node HTTP adapter accepts your application's session resolver as an argument. It should return the authenticated user or `null`; do not obtain the user ID from an unverified request parameter.
+Install `@walter-sql/tanstack-query`, then add a hook using your existing typed client and query provider:
 
 ```ts
-// server/http.ts
-import { createServer, type IncomingMessage } from "node:http";
-import { onError } from "@orpc/server";
-import { RPCHandler } from "@orpc/server/node";
-import { router, type Context } from "./router";
+import { useQuery } from "@tanstack/react-query";
+import { liveQueryOptions } from "@walter-sql/tanstack-query";
+import { orpc } from "./rpc";
 
-export function createTaskServer(
-  authenticate: (request: IncomingMessage) => Promise<Context["user"]>
-) {
-  const handler = new RPCHandler(router, {
-    interceptors: [onError(error => console.error(error))]
-  });
-
-  return createServer(async (req, res) => {
-    try {
-      const user = await authenticate(req);
-      const { matched } = await handler.handle(req, res, {
-        prefix: "/rpc",
-        context: { user }
-      });
-      if (!matched) res.writeHead(404).end();
-    } catch (error) {
-      console.error(error);
-      if (!res.headersSent) res.writeHead(500);
-      res.end();
-    }
-  });
+export function useTasks() {
+  return useQuery(liveQueryOptions(orpc.tasks.list.queryOptions()));
 }
 ```
 
-Call `createTaskServer` with your session resolver and start it on your application's port, or mount `RPCHandler` in an existing server. Serve `/rpc` through the same origin as the frontend, including through a development proxy when the frontend and backend use different ports.
+Call `useTasks()` in your component. Its `data` is `Task[] | undefined`, updated as messages arrive. Use `data === undefined && !isError` for initial loading; `isFetching` can stay true while streaming.
 
-The error interceptor records rejected Walter queries on the server. oRPC converts unrecognized errors into its generic internal error response. Avoid an error formatter that exposes the original SQL or engine error message to the browser.
+<details>
+<summary>Connect an existing oRPC client to TanStack Query</summary>
 
-## Create the browser client
+Use the matching oRPC TanStack adapter to wrap your typed client with `createTanstackQueryUtils`:
 
 ```ts
 // browser/rpc.ts
@@ -104,74 +56,76 @@ import { createTanstackQueryUtils } from "@orpc/tanstack-query";
 import type { RouterClient } from "@orpc/server";
 import type { router } from "../server/router";
 
-const link = new RPCLink({ url: `${location.origin}/rpc` });
-const client: RouterClient<typeof router> = createORPCClient(link);
-
+const client: RouterClient<typeof router> = createORPCClient(
+  new RPCLink({ url: new URL("/rpc", location.href) })
+);
 export const orpc = createTanstackQueryUtils(client);
 ```
 
-The imports from the server are types only. The engine client and database credentials stay on the server.
+Preserve your client's existing authentication and link options. Server imports here are types only.
 
-## Render the live rows
+</details>
 
-```tsx
-// browser/TaskApp.tsx
-import {
-  QueryClient,
-  QueryClientProvider,
-  useQuery
-} from "@tanstack/react-query";
-import { liveQueryOptions } from "@walter-sql/tanstack-query";
-import { orpc } from "./rpc";
+## WebSocket transport
 
-const queryClient = new QueryClient();
+The same procedure and hook work over WebSocket. Keep your existing connection, or use one of these setups:
 
-function Tasks() {
-  const { data: tasks, isError } = useQuery(
-    liveQueryOptions(orpc.tasks.list.queryOptions())
-  );
+<details>
+<summary>oRPC 1: use a reconnecting browser socket</summary>
 
-  if (tasks === undefined && !isError) return <p>Loading tasks…</p>;
+Use `RPCHandler` from `@orpc/server/ws` with your authenticated server socket. In the browser, create a shared PartySocket client:
 
-  return (
-    <section>
-      {isError && <p>Tasks could not be updated. The last result is shown.</p>}
-      {tasks?.length === 0 && <p>No unfinished tasks.</p>}
-      <ul>
-        {tasks?.map(task => (
-          <li key={task.id}>{task.title}</li>
-        ))}
-      </ul>
-    </section>
-  );
-}
+```ts
+// browser/rpc.ts
+import WebSocket from "partysocket/ws";
+import { createORPCClient } from "@orpc/client";
+import { RPCLink } from "@orpc/client/websocket";
+import { createTanstackQueryUtils } from "@orpc/tanstack-query";
+import type { RouterClient } from "@orpc/server";
+import type { router } from "../server/router";
 
-export function TaskApp() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <Tasks />
-    </QueryClientProvider>
-  );
-}
+const url = new URL("/rpc", location.href);
+url.protocol = location.protocol === "https:" ? "wss:" : "ws:";
+export const socket = new WebSocket(url.href);
+const client: RouterClient<typeof router> = createORPCClient(
+  new RPCLink({ websocket: socket as globalThis.WebSocket })
+);
+export const orpc = createTanstackQueryUtils(client);
 ```
 
-If the app already has a `QueryClientProvider`, use that provider and mount `Tasks` inside it.
+PartySocket reconnects; TanStack Query's retry opens a fresh subscription. Await cancellation of active queries before closing the socket at shutdown.
 
-`data` is the current task array. `liveQueryOptions` applies each snapshot or diff to the query cache. The query function stays active while it reads the stream, so `isFetching` can remain true after the first result; do not use it alone as the initial loading indicator.
+</details>
 
-## Cancellation and reconnects
+<details>
+<summary>oRPC 2: use its built-in reconnecting link</summary>
 
-The transport receives TanStack's abort signal. When the last observer leaves and the query is cancelled, that signal closes the request and the server subscription. Cached rows can remain available for a later mount.
+Use `RPCHandler` from `@orpc/server/websocket` on the server. Configure the browser link with:
 
-`liveQueryOptions` defaults `refetchOnMount` to `"always"` so a remount opens a stream, and `retry` to `true` so a failed stream can reopen. You can override these options, but a query with retained cached rows and no active stream will not receive new updates.
+```ts
+import { RPCLink } from "@orpc/client/websocket";
 
-A `failed` view sets the query's error state while retaining its data. The same stream can recover with a new snapshot. A transport exception follows TanStack's retry behavior. These are separate from a server-to-engine or replication interruption, which may leave the last result visible without an immediate frontend error.
+const url = new URL("/rpc", location.href);
+url.protocol = location.protocol === "https:" ? "wss:" : "ws:";
+const link = new RPCLink({
+  connect: () => new WebSocket(url.href),
+  reconnect: { enabled: true }
+});
+```
 
-On sign-out or account changes, cancel the old user's queries and remove their cached private data using your application's existing session lifecycle. Server-side access changes also need the handling described in [Access control](/docs/access-control/).
+Verified with `2.0.0-beta.37`. Use matching server and client versions; see the [migration guide](https://orpc.dev/docs/migrations/from-v1).
+
+</details>
+
+## Cancellation and recovery
+
+Cancelling a query releases its subscription. On sign-out, also clear private cached data. A `failed` view retains previous rows and sets the query's error state; a later snapshot restores it.
+
+`liveQueryOptions` defaults to retrying errors and opening a new stream on remount. See the [reference](/docs/javascript-client/#tanstack-query-helpers) for these options and [access control](/docs/access-control/) for permission changes.
 
 ## Fetch once instead
 
-Use the same procedure as a one-time request:
+Use the same procedure for a one-time result:
 
 ```ts
 import { snapshotQueryOptions } from "@walter-sql/tanstack-query";
@@ -179,6 +133,4 @@ import { snapshotQueryOptions } from "@walter-sql/tanstack-query";
 const options = snapshotQueryOptions(orpc.tasks.list.queryOptions());
 ```
 
-This resolves with the first snapshot and ends the stream. It is useful when a screen needs one result but does not need live updates.
-
-The repository's [auction demo](https://github.com/walter-sql/walter/tree/master/examples/demo) includes the same integration with a complete server, React app, session handling, and write endpoints.
+This resolves with the first snapshot and closes the stream. The [auction demo](https://github.com/walter-sql/walter/tree/master/examples/demo) contains a complete application.

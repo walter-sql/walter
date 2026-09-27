@@ -1,7 +1,7 @@
 ---
 title: When to use Walter
 description: Decide whether live query results fit your application, database, and operational needs.
-section: Background
+section: Start here
 order: 2
 ---
 

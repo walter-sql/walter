@@ -15,9 +15,11 @@ interface Props {
 
 const { doc, headings } = Astro.props;
 const docs = await orderedDocs();
-const here = docs.findIndex(entry => entry.id === doc.id);
-const prev = docs[here - 1];
-const next = docs[here + 1];
+const journey = docs.filter(entry => !entry.data.parent);
+const here = journey.findIndex(entry => entry.id === doc.id);
+const parent = docs.find(entry => entry.id === doc.data.parent);
+const prev = parent ?? journey[here - 1];
+const next = parent ? undefined : journey[here + 1];
 const toc = headings.filter(
   heading => heading.depth === 2 || heading.depth === 3
 );
@@ -144,24 +146,38 @@ const jsonLd = JSON.stringify({
             >
               <path d="m6 4 4 4-4 4" />
             </svg>
-            <span>{doc.data.section}</span>
+            {parent ? (
+              <a href={docPath(parent)}>{parent.data.title}</a>
+            ) : (
+              <span>{doc.data.section}</span>
+            )}
           </div>
           <h1>{doc.data.title}</h1>
+          <p class="docs-lead">{doc.data.description}</p>
         </header>
-        {(doc.id === "index" || doc.id === "your-app") && (
-          <DocsIntro showWrites={doc.id === "your-app"} />
+        {(doc.data.diagram === "data-path" ||
+          doc.data.diagram === "read-write") && (
+          <DocsIntro showWrites={doc.data.diagram === "read-write"} />
         )}
-        {doc.id === "scaling" && <ScalingDiagram />}
-        {doc.id === "how-it-works" && <SubscriptionDiagram />}
+        {doc.data.diagram === "scaling" && <ScalingDiagram />}
+        {doc.data.diagram === "subscription" && <SubscriptionDiagram />}
         <div class="prose docs-prose">
           <slot />
+        </div>
+        <div class="docs-page-source">
+          <a
+            href={`https://github.com/walter-sql/walter/blob/master/docs/src/content/docs/${doc.id}.md`}
+          >
+            View page source ↗
+          </a>
+          <a href="https://github.com/walter-sql/walter/releases">Releases ↗</a>
         </div>
         <nav class="docs-pager" aria-label="Adjacent pages">
           {prev ? (
             <a
               href={docPath(prev)}
               rel="prev"
-              aria-label={`Previous: ${prev.data.title}`}
+              aria-label={`${parent ? "Back to" : "Previous"}: ${prev.data.title}`}
             >
               <span class="docs-pager-label">
                 <svg
@@ -175,7 +191,7 @@ const jsonLd = JSON.stringify({
                 >
                   <path d="M13 8H3m5-5L3 8l5 5" />
                 </svg>
-                Previous
+                {parent ? "Back to" : "Previous"}
               </span>
               <span class="docs-pager-title">{prev.data.title}</span>
             </a>
@@ -246,7 +262,7 @@ const jsonLd = JSON.stringify({
           </svg>
         </a>
         <a href="/llms-full.txt">
-          Full documentation{" "}
+          Full docs (.txt){" "}
           <svg
             width="12"
             height="12"

@@ -1,6 +1,6 @@
 ---
 title: JavaScript API
-description: Reference for EngineClient, view reducers, stream helpers, error codes, and TanStack Query adapters.
+description: Reference for EngineClient, view reducers, subscription and SSE helpers, and TanStack Query adapters.
 section: Reference
 order: 4
 ---
@@ -76,7 +76,7 @@ const unsubscribe = walter.subscribe(shape, message => {
 });
 ```
 
-This callback API delivers raw server messages, including `error` frames. It returns a function that ends the subscription. Unlike `stream`, it does not turn errors into exceptions or buffer messages for an async consumer.
+This callback API delivers raw server messages, including `error` frames with the engine's diagnostic text. Keep those raw error frames on the server. It returns a function that ends the subscription. Unlike `stream`, it does not turn errors into exceptions or buffer messages for an async consumer.
 
 Use it when you need to manage the message lifecycle yourself. Most request handlers should use `stream`.
 
@@ -113,6 +113,17 @@ type View<TRow> = {
 | `failed`   | Retain rows and set status to `failed`.              |
 
 A failed result can recover on the same stream with a snapshot. `live` is not a connection or freshness indicator. See [Recovery and monitoring](/docs/operations/#query-status-and-connection-status).
+
+Diffs contain collection operations (`add`, `remove`, `update`, and `reorder`). Updates can contain these element operations:
+
+```ts
+type ElementOp =
+  | { op: "set"; field: string; value: any }
+  | { op: "nest"; field: string; ops: CollectionOp[] }
+  | { op: "patch"; field: string; ops: ElementOp[] };
+```
+
+The `set` value is typed as `any` because different fields have different value types; this also lets typed JSON transports preserve the message structure. Values received from Walter are JSON. See the [wire protocol](/docs/wire-protocol/#applying-a-diff) for operation ordering.
 
 ### materialize
 
@@ -152,6 +163,104 @@ const nextRows = applyCollection(previousRows, changes);
 
 Applies collection operations without managing view status. Use `applyView` when handling complete view messages. The [wire protocol](/docs/wire-protocol/#applying-a-diff) defines operation ordering for implementations in other languages.
 
+## Callback subscriptions
+
+These exports come from `@walter-sql/view` and are also re-exported by the client and TanStack Query packages.
+
+### subscriptionStream
+
+```ts
+function subscriptionStream<TRow extends RowValue = RowValue>(
+  subscribe: (sink: Sink<ViewMessage<TRow>>) => () => void,
+  signal?: AbortSignal
+): AsyncIterable<ViewMessage<TRow>>;
+```
+
+Converts a callback subscription into an async iterable for `materialize`, `snapshot`, or `liveQueryOptions`. `subscribe` receives a sink and returns its unsubscribe function. It runs immediately unless the signal is already aborted. Consume the iterable once, or abort it if it will not be consumed.
+
+Aborting the signal unsubscribes immediately. Ending iteration also unsubscribes. Messages already queued are drained before the iterable completes or throws a terminal error.
+
+The queue holds up to 1,000 messages. If another arrives while it is full, the helper clears the backlog, unsubscribes, and calls `subscribe` again. **Each call must open a fresh subscription that starts with a snapshot.** Merely reattaching a listener to a running diff stream is insufficient. The unsubscribe function must stop delivery from the old subscription.
+
+The helper does not create or reconnect a shared application socket. See the [tRPC](/docs/trpc/), [WebSocket](/docs/websocket/), and [Socket.IO](/docs/socket-io/) recipes for adapting existing connections.
+
+### Sink
+
+```ts
+interface Sink<T> {
+  next(value: T): void;
+  error(reason: unknown): void;
+  complete(): void;
+}
+```
+
+`next` delivers a value. `error` ends delivery and makes iteration throw the supplied reason after queued values. `complete` ends delivery normally after queued values. A Walter `failed` message goes through `next`; it is a recoverable view state.
+
+## Server-sent events
+
+### sseStream
+
+Exported from `@walter-sql/view`, and re-exported by the client and TanStack Query packages:
+
+```ts
+function sseStream<TRow extends RowValue = RowValue>(
+  url: string | URL,
+  signal?: AbortSignal
+): AsyncIterable<ViewMessage<TRow>>;
+```
+
+Opens a native `EventSource` and parses JSON data events. View messages pass through unchanged, including `failed`. Use it in a browser or another runtime that provides `EventSource`. The supplied row type describes the data; it does not validate it.
+
+The connection opens immediately. Abort or end iteration to close it. Temporary connection failures and ordinary response endings leave the iterable open while `EventSource` reconnects; a new server subscription sends a replacement snapshot.
+
+An error frame such as `{"type":"error","code":"parse_error"}` closes the event connection and throws a `WalterError` with that code. It does not reconnect. A refused HTTP response or another terminal `EventSource` failure throws `closed`. A caller such as TanStack Query may separately retry by opening a new stream.
+
+This helper uses `subscriptionStream`, including its queue limit and fresh-subscription behavior. It sends same-origin cookies through the browser's native API. It has no custom-header or cross-origin credential options and does not expose connection-status events.
+
+### writeSSE and sseResponse
+
+Exported from `@walter-sql/client`:
+
+```ts
+function writeSSE(
+  res: ServerResponse,
+  source: MessageSource,
+  options?: SseOptions
+): Promise<void>;
+
+function sseResponse(source: MessageSource, options?: SseOptions): Response;
+
+type MessageSource = (signal: AbortSignal) => AsyncIterable<ViewMessage>;
+
+interface SseOptions {
+  heartbeat?: number;
+  signal?: AbortSignal;
+}
+```
+
+`writeSSE` writes to a Node `ServerResponse` with backpressure. `sseResponse` returns a standard `Response` synchronously, without waiting for the first query result. Both use HTTP 200 and send JSON data events with these headers:
+
+| Header              | Value                    |
+| ------------------- | ------------------------ |
+| `Content-Type`      | `text/event-stream`      |
+| `Cache-Control`     | `no-cache, no-transform` |
+| `X-Accel-Buffering` | `no`                     |
+
+`source` receives the helper's abort signal. Pass it to `walter.stream(shape, signal)` so closing the Node response or cancelling the standard response body releases the subscription. In Fetch-style handlers, also pass `{ signal: request.signal }` in the options; this covers a request that ends before the handler returns.
+
+Each message is sent as `data: <json>` followed by a blank line. If the source throws, the helper sends one final error frame and ends the stream:
+
+```text
+data: {"type":"error","code":"parse_error"}
+
+```
+
+The frame contains only a code, with no error text or cause. A `WalterError` preserves its code; another thrown error becomes `internal`. Query rejections are handled in the stream and do not reach framework HTTP error handlers. Authentication failures can still return an HTTP error before a helper is called. A `failed` view remains an ordinary data event.
+
+`heartbeat` is the interval in milliseconds between SSE comment frames, defaulting to `15_000`. Heartbeats run while waiting for the first result as well as between updates, and are skipped under backpressure. They do not create new subscriptions. Choose a positive interval suitable for your proxy's idle timeout.
+
+See [Node HTTP and SSE](/docs/other-stacks/) for browser consumption and [proxy configuration](/docs/other-stacks/#proxy-configuration).
+
 ## TanStack Query helpers
 
 These helpers are exported from `@walter-sql/tanstack-query`. Their input query function must return an async iterable of view messages, or a promise of one.
@@ -164,19 +273,23 @@ These helpers are exported from `@walter-sql/tanstack-query`. Their input query 
 
 The package requires `@tanstack/query-core` >=5, provided by your TanStack Query adapter. The helpers do not open an engine connection. Your query function and transport must pass TanStack's abort signal through to the server subscription.
 
-See [oRPC and TanStack Query](/docs/orpc-tanstack/) for the full integration and cache behavior.
+Use an async iterable from [oRPC](/docs/orpc-tanstack/), a [tRPC subscription](/docs/trpc/), or [SSE](/docs/other-stacks/#use-tanstack-query). The helper applies the same cache behavior for each transport.
 
 ## Errors
 
-`WalterError` has a `code` property and a diagnostic `message`.
+`WalterError` has a `code` property and a fixed, client-safe `message`, such as `[walter] parse_error: the engine could not parse this query`.
 
-| Code              | Meaning                                                                                                              |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `bad_message`     | The engine received an invalid protocol message.                                                                     |
-| `parse_error`     | The SQL could not be parsed.                                                                                         |
-| `unsupported_sql` | The SQL or its parameters cannot be used for this subscription.                                                      |
-| `internal`        | An unexpected error occurred while establishing the subscription.                                                    |
-| `failed`          | A one-shot helper received a failed view before its first snapshot, or a live TanStack query received a failed view. |
-| `closed`          | A one-shot stream ended before a snapshot, or a live TanStack stream ended without cancellation.                     |
+Construct one with `new WalterError("closed")`. The optional second argument accepts standard `ErrorOptions`, including `{ cause: originalError }`.
 
-The streaming API forwards `failed` as a view message; it does not throw that message as an error. Keep engine diagnostics in server logs rather than returning them directly to browser clients.
+For errors thrown by `walter.stream`, `cause` contains the engine's diagnostic on the server. The SSE helpers send only the code, and `sseStream` reconstructs the safe message in the browser.
+
+| Code              | Meaning                                                                                                                              |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `bad_message`     | The engine received an invalid protocol message.                                                                                     |
+| `parse_error`     | The SQL could not be parsed.                                                                                                         |
+| `unsupported_sql` | The SQL or its parameters cannot be used for this subscription.                                                                      |
+| `internal`        | An unexpected error occurred while establishing the subscription.                                                                    |
+| `failed`          | A one-shot helper received a failed view before its first snapshot, or a live TanStack query received a failed view.                 |
+| `closed`          | A stream ended before a required result, a live TanStack stream ended without cancellation, or an SSE connection closed permanently. |
+
+The streaming API forwards `failed` as a view message; it does not throw that message as an error. The one-shot `snapshot` helper and TanStack integration turn that state into an error as described above. Keep diagnostic causes in server logs.

@@ -1,13 +1,12 @@
 ---
 title: Scaling
-description: Distribute query maintenance across owners and serve more subscribers through relays, with deployment and recovery details.
+description: Owners maintain query results. Relays deliver those results to more subscribers. Scale either kind of work as your application grows.
 section: Operations
 order: 4
+diagram: scaling
 ---
 
-Walter can run across multiple instances. It distributes distinct query results among **owners** and lets other instances **relay** those results to subscribers. This separates the work of maintaining queries from the work of sending their results to many consumers.
-
-The diagram shows a deployment with a dedicated relay layer: the load balancer sends connections from your application servers to the relays, and each relay subscribes to the relevant owners. Owners can also accept application connections directly. Choose the topology based on whether query maintenance and result delivery need to scale separately.
+The diagram shows a dedicated relay layer. For a smaller cluster, your application servers can connect directly to the owners. [Choose a topology](#choose-a-topology) based on the work you need to distribute.
 
 ## Owners and relays
 

@@ -43,6 +43,14 @@
 .docs-nav section + section {
   margin-top: 25px;
 }
+.docs-nav .docs-subnav {
+  margin: 8px 0 12px 11px;
+  padding-left: 10px;
+  border-left: 1px solid var(--hairline);
+}
+.docs-subnav a {
+  font-size: 12px;
+}
 .docs-nav h2 {
   margin: 0 0 8px 10px;
   color: var(--ink);
@@ -158,10 +166,37 @@
 .docs-prose {
   max-width: none;
 }
-.docs-prose > p:first-child {
+.docs-lead {
+  margin-top: 18px;
   color: var(--muted);
   font-size: 18px;
   line-height: 1.65;
+}
+.docs-page-source {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-top: 40px;
+  font-size: 12px;
+}
+.docs-page-source a {
+  color: var(--muted);
+  text-decoration: none;
+}
+.docs-page-source a:hover {
+  color: var(--ink);
+}
+.docs-prose details {
+  padding: 16px 20px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+}
+.docs-prose details > summary {
+  color: var(--ink);
+  font-weight: 550;
+}
+.docs-prose details[open] > * + * {
+  margin-top: 1em;
 }
 .docs-prose :is(h2, h3, h4) {
   position: relative;
@@ -540,7 +575,7 @@
   .docs-mobile-bar {
     padding-inline: 20px;
   }
-  .docs-prose > p:first-child {
+  .docs-lead {
     font-size: 17px;
   }
   .docs-code-block pre.astro-code {

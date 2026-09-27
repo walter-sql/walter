@@ -2,16 +2,14 @@
 title: Installation
 description: Connect Walter to your Postgres database using Docker, Docker Compose, or Node.js.
 section: Start here
-order: 2
+order: 3
 ---
 
-Walter connects to an existing Postgres primary. By default, it follows changes to all tables in that database. You can restrict it to specific tables with `WALTER_TABLES`.
-
-Start with a development or staging database where you can try queries and change data. The database setup below applies to [Docker](#docker), [Docker Compose](#docker-compose), and [Node.js](#nodejs).
+Start with a development or staging Postgres primary. Prepare replication, review the database changes below, then choose [Docker](#docker), [Docker Compose](#docker-compose), or [Node.js](#nodejs).
 
 ## Prepare Postgres
 
-The minimum supported Postgres version is 14. Using your usual SQL client, check the replication settings:
+Use Postgres 14 or newer. In your SQL client, check:
 
 ```sql
 SHOW wal_level;
@@ -21,7 +19,7 @@ SHOW max_wal_senders;
 
 `wal_level` must be `logical`. If it is not, change the setting in your Postgres configuration or your provider's dashboard and restart Postgres as required by the provider.
 
-Each Walter instance connected to Postgres uses one logical replication slot and one replication sender connection. Leave capacity for any replicas or other replication clients you already run. See [Postgres's replication configuration documentation](https://www.postgresql.org/docs/18/logical-replication-config.html).
+Each database-connected Walter instance needs one replication slot and one replication sender, in addition to capacity used by your other clients. See [Postgres replication configuration](https://www.postgresql.org/docs/18/logical-replication-config.html).
 
 Use a database endpoint that supports logical replication. A connection pooler's transaction endpoint cannot replace that connection; check the endpoint your database provider supplies for replication.
 
@@ -36,7 +34,7 @@ WALTER_PG=postgres://USER:PASSWORD@DATABASE_HOST:5432/DATABASE
 # WALTER_TABLES=public.tasks,public.users
 ```
 
-Uncomment the last line and replace the table names if you want to choose a subset. Include any tables used by joins or nested queries. Leaving the line commented uses all tables.
+By default, Walter serves all tables. Uncomment `WALTER_TABLES` to choose a subset, including any tables used by joins or nested queries.
 
 Use a database hostname reachable from the container. `localhost` inside a container refers to that container. If Postgres is in the same Compose project, use its service name as the database host. Include any TLS settings required by your database provider in the connection string.
 
@@ -44,9 +42,9 @@ Use a database hostname reachable from the container. `localhost` inside a conta
 
 On startup, Walter:
 
-- Creates or updates a publication named `walter_pub`. A publication tells Postgres which tables' changes to make available through replication. It includes all tables by default, or the tables in `WALTER_TABLES` when you provide a list.
-- Sets `REPLICA IDENTITY FULL` on those tables if it is not already set. This includes old row values in updates and deletes, which Walter needs to maintain results.
-- Reads table names, columns, types, primary keys, and unique keys to check subscription queries.
+- Creates or updates `walter_pub`, the publication listing the tables whose changes Postgres sends to Walter.
+- Sets `REPLICA IDENTITY FULL` on those tables so updates and deletes include the old row values Walter needs.
+- Reads columns, types, and keys to check subscription queries.
 
 Changing replica identity requires a table lock and can increase the amount of WAL produced by updates and deletes. Plan the first setup of busy tables accordingly. See the [Postgres replica identity reference](https://www.postgresql.org/docs/18/sql-altertable.html#SQL-ALTERTABLE-REPLICA-IDENTITY).
 
@@ -54,15 +52,18 @@ Walter creates no application tables and requires no extensions or triggers. The
 
 ### Database permissions
 
-The connection role needs permission to connect to the database, use the relevant schemas, read the served tables, and stream logical replication.
+The role needs database connection, schema usage, table read, and logical replication privileges. It must also be allowed to call `pg_logical_emit_message`, which Walter uses for consistency without modifying application rows.
 
-The role must also be allowed to call `pg_logical_emit_message`, which Walter uses to keep results consistent. This writes replication messages without changing application rows.
+For automatic setup, the role needs to create or modify `walter_pub` and alter the served tables. The default all-table publication requires a superuser; an explicit table list requires `CREATE` on the database and ownership rights on those tables. See [publication permissions](https://www.postgresql.org/docs/18/sql-createpublication.html#SQL-CREATEPUBLICATION-NOTES).
 
-Automatic setup also needs the rights to create or modify `walter_pub` and alter the served tables. Creating the default all-table publication requires a Postgres superuser. Creating a publication for an explicit table list requires `CREATE` on the database and ownership rights on those tables. [Postgres documents these publication permissions](https://www.postgresql.org/docs/18/sql-createpublication.html#SQL-CREATEPUBLICATION-NOTES).
+<details>
+<summary>Administrator-managed setup and managed databases</summary>
 
 An administrator can prepare the publication and replica identity settings ahead of time so the runtime role does not need to change them. They must match the default all-table mode or your chosen table list. On Postgres 18, the publication must also use `publish_generated_columns = stored`. Managed services may provide replication privileges through a provider-specific role.
 
 Walter expects complete changes for the tables it serves. Do not add publication row filters, column lists, or custom publication options. Per-user access belongs in [your application's authorization logic](/docs/access-control/).
+
+</details>
 
 ## Start the engine
 
@@ -77,7 +78,7 @@ docker run -d --name walter \
   ghcr.io/walter-sql/engine:latest
 ```
 
-The image includes the engine and its Node.js runtime, runs as a non-root user, and listens on `0.0.0.0` inside the container. This command publishes the port on your machine's loopback interface, at `ws://127.0.0.1:5544`.
+This starts the engine at `ws://127.0.0.1:5544`, accessible from your machine. The image includes Node.js and runs as a non-root user.
 
 ### Docker Compose
 
@@ -101,7 +102,9 @@ docker compose up -d walter
 
 The `raw` format preserves literal values, including `$` characters, as `docker run --env-file` does. It requires [Compose 2.30 or newer](https://docs.docker.com/reference/compose-file/services/#format).
 
-An application server in the same Compose project connects to `ws://walter:5544`. `docker compose up --wait walter` and `depends_on` with `condition: service_healthy` wait for `/live`, which checks the engine process. Use `/ready` to check its Postgres connection. You can omit `ports` when no connections from the host are needed. If you are switching from the Docker command above, stop that container first to free the host port.
+An application server in the same Compose project connects to `ws://walter:5544`. You can omit `ports` if host access is unnecessary. If you already used the standalone Docker command, stop that container first to free the port.
+
+Compose health checks test the engine process at `/live`. Check its Postgres connection with `/ready`, as shown below.
 
 Both Docker examples use `:latest`. Pin a tested image tag or digest in production. Walter needs no persistent volume for query state; it rebuilds active results from Postgres after a restart.
 

@@ -9,9 +9,10 @@ interface Props {
 }
 
 const { docs, currentId, label = "Documentation" } = Astro.props;
+const current = docs.find(doc => doc.id === currentId);
 const groups = sections.map(name => ({
   name,
-  docs: docs.filter(doc => doc.data.section === name)
+  docs: docs.filter(doc => doc.data.section === name && !doc.data.parent)
 }));
 ---
 
@@ -28,6 +29,25 @@ const groups = sections.map(name => ({
             >
               {doc.data.title}
             </a>
+            {(currentId === doc.id || current?.data.parent === doc.id) &&
+              docs.some(child => child.data.parent === doc.id) && (
+                <ul class="docs-subnav">
+                  {docs
+                    .filter(child => child.data.parent === doc.id)
+                    .map(child => (
+                      <li>
+                        <a
+                          href={docPath(child)}
+                          aria-current={
+                            child.id === currentId ? "page" : undefined
+                          }
+                        >
+                          {child.data.title}
+                        </a>
+                      </li>
+                    ))}
+                </ul>
+              )}
           </li>
         ))}
       </ul>

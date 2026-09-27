@@ -9,7 +9,8 @@ export default defineConfig({
     "/docs/connect-postgres/": "/docs/installation/"
   },
   devToolbar: { enabled: false },
-  vite: { server: { allowedHosts: true } },
+  server: { port: 4321 },
+  vite: { server: { allowedHosts: true, strictPort: true } },
   integrations: [sitemap()],
   markdown: {
     shikiConfig: { themes: shikiThemes, defaultColor: false }
